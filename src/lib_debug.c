@@ -29,6 +29,13 @@ LJLIB_CF(debug_getregistry)
   return 1;
 }
 
+
+LJLIB_CF(debug_getconsts)
+{
+  settabV(L, L->top++, L->consts);
+  return 1;
+}
+
 LJLIB_CF(debug_getmetatable)	LJLIB_REC(.)
 {
   lj_lib_checkany(L, 1);

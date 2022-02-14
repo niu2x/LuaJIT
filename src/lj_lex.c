@@ -510,5 +510,7 @@ void lj_lex_init(lua_State *L)
     fixstring(s);  /* Reserved words are never collected. */
     s->reserved = (uint8_t)(i+1);
   }
+  L->consts = lj_tab_new_ah(L, 0, 1024);
+  fixtab(L->consts);
 }
 
