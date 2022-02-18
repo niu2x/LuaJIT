@@ -53,6 +53,20 @@ LJLIB_LUA(table_getn) /*
     return #t
   end
 */
+LJLIB_CF(table_setnomm)
+{
+  GCtab *t = lj_lib_checktab(L, 1);
+  uint8_t nomm = lj_lib_checkint(L, 2);
+  t->nomm = nomm;
+  return 0;
+}
+
+LJLIB_CF(table_getnomm)
+{
+  GCtab *t = lj_lib_checktab(L, 1);
+  lua_pushinteger(L, t->nomm);
+  return 1;
+}
 
 LJLIB_CF(table_maxn)
 {
@@ -334,6 +348,13 @@ LUALIB_API int luaopen_table(lua_State *L)
 #endif
   lj_lib_prereg(L, LUA_TABLIBNAME ".new", luaopen_table_new, tabV(L->top-1));
   lj_lib_prereg(L, LUA_TABLIBNAME ".clear", luaopen_table_clear, tabV(L->top-1));
+
+  #define export_mm(name) \
+  lua_pushnumber(L, MM_##name); \
+  lua_setglobal(L, "MM_" # name);
+  MMDEF(export_mm)
+  #undef export_mm
+
   return 1;
 }
 

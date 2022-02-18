@@ -703,3 +703,14 @@ LUALIB_API void luaL_traceback (lua_State *L, lua_State *L1, const char *msg,
   lua_concat(L, (int)(L->top - L->base) - top);
 }
 
+
+extern void lj_debug_bc_tgets(GCstr *p){
+  // printf("tgets: %s\n", strdata(p));
+}
+
+
+uint64_t bc_counter[256] = {0};
+
+extern void lj_debug_ins_next(uint64_t k){
+  bc_counter[bc_op(k)] ++;
+}

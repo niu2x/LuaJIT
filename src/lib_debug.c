@@ -401,6 +401,31 @@ LJLIB_CF(debug_traceback)
   return 1;
 }
 
+
+
+extern uint64_t bc_counter[256];
+static char *bcnames = "ISLT  ISGE  ISLE  ISGT  ISEQV ISNEV ISEQS ISNES ISEQN ISNEN ISEQP ISNEP ISTC  ISFC  IST   ISF   ISTYPEISNUM MOV   NOT   UNM   LEN   ADDVN SUBVN MULVN DIVVN MODVN ADDNV SUBNV MULNV DIVNV MODNV ADDVV SUBVV MULVV DIVVV MODVV POW   CAT   KSTR  KCDATAKSHORTKNUM  KPRI  KNIL  UGET  USETV USETS USETN USETP UCLO  FNEW  TNEW  TDUP  GGET  GSET  TGETV TGETS TGETB TGETR TSETV TSETS TSETB TSETM TSETR CALLM CALL  CALLMTCALLT ITERC ITERN VARG  ISNEXTRETM  RET   RET0  RET1  FORI  JFORI FORL  IFORL JFORL ITERL IITERLJITERLLOOP  ILOOP JLOOP JMP   FUNCF IFUNCFJFUNCFFUNCV IFUNCVJFUNCVFUNCC FUNCCW";
+
+LJLIB_CF(debug_dump_bc_counter)
+{
+  for(int i = 0; i < 256; i ++) {
+    uint64_t c = bc_counter[i];
+    if(c){
+
+      putchar(bcnames[i*6 + 0]);
+      putchar(bcnames[i*6 + 1]);
+      putchar(bcnames[i*6 + 2]);
+      putchar(bcnames[i*6 + 3]);
+      putchar(bcnames[i*6 + 4]);
+      putchar(bcnames[i*6 + 5]);
+
+      printf(" : %lu\n", c);
+
+    }
+  }
+  return 0;
+}
+
 /* ------------------------------------------------------------------------ */
 
 #include "lj_libdef.h"
