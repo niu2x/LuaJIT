@@ -1387,13 +1387,10 @@ static void build_subroutines(BuildCtx *ctx)
   |  b ->fff_resn
   |.endmacro
   |
-  |.macro math_extern2, name, func
-  |  .ffunc_nn math_ .. name
+  |.macro math_extern2, func
+  |  .ffunc_nn math_ .. func
   |  bl extern func
   |  b ->fff_resn
-  |.endmacro
-  |.macro math_extern2, func
-  |  math_extern2 func, func
   |.endmacro
   |
   |.ffunc_n math_sqrt
@@ -1423,7 +1420,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  math_extern sinh
   |  math_extern cosh
   |  math_extern tanh
-  |  math_extern2 pow, lj_vm_pow
+  |  math_extern2 pow
   |  math_extern2 atan2
   |  math_extern2 fmod
   |
@@ -2677,7 +2674,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_arithload FARG1, FARG2
     |  ins_arithfallback ins_arithcheck_num
     |.if "fpins" == "fpow"
-    |  bl extern lj_vm_pow
+    |  bl extern pow
     |.else
     |  fpins FARG1, FARG1, FARG2
     |.endif
@@ -3991,6 +3988,7 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.align 3\n"
 	".LEFDE1:\n\n", (int)ctx->codesz - fcofs);
 #endif
+#if !LJ_NO_UNWIND
     fprintf(ctx->fp, "\t.section .eh_frame,\"a\",%%progbits\n");
     fprintf(ctx->fp,
 	".Lframe1:\n"
@@ -4058,6 +4056,7 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.byte 0x94\n\t.uleb128 4\n"		/* offset x20 */
 	"\t.align 3\n"
 	".LEFDE3:\n\n", (int)ctx->codesz - fcofs);
+#endif
 #endif
     break;
 #if !LJ_NO_UNWIND

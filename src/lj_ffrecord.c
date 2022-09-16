@@ -638,8 +638,8 @@ static void LJ_FASTCALL recff_math_call(jit_State *J, RecordFFData *rd)
 
 static void LJ_FASTCALL recff_math_pow(jit_State *J, RecordFFData *rd)
 {
-  J->base[0] = lj_opt_narrow_pow(J, J->base[0], J->base[1],
-				 &rd->argv[0], &rd->argv[1]);
+  J->base[0] = lj_opt_narrow_arith(J, J->base[0], J->base[1],
+				   &rd->argv[0], &rd->argv[1], IR_POW);
   UNUSED(rd);
 }
 
@@ -1117,7 +1117,7 @@ static LJ_AINLINE TRef recff_sbufx_len(jit_State *J, TRef trr, TRef trw)
 }
 
 /* Emit typecheck for string buffer. */
-static TRef recff_sbufx_check(jit_State *J, RecordFFData *rd, int arg)
+static TRef recff_sbufx_check(jit_State *J, RecordFFData *rd, ptrdiff_t arg)
 {
   TRef trtype, ud = J->base[arg];
   if (!tvisbuf(&rd->argv[arg])) lj_trace_err(J, LJ_TRERR_BADTYPE);
@@ -1135,7 +1135,7 @@ static TRef recff_sbufx_write(jit_State *J, TRef ud)
 }
 
 /* Check for integer in range for the buffer API. */
-static TRef recff_sbufx_checkint(jit_State *J, RecordFFData *rd, int arg)
+static TRef recff_sbufx_checkint(jit_State *J, RecordFFData *rd, ptrdiff_t arg)
 {
   TRef tr = J->base[arg];
   TRef trlim = lj_ir_kint(J, LJ_MAX_BUF);

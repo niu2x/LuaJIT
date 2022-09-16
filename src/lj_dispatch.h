@@ -44,7 +44,7 @@ extern double __divdf3(double a, double b);
 #define GOTDEF(_) \
   _(floor) _(ceil) _(trunc) _(log) _(log10) _(exp) _(sin) _(cos) _(tan) \
   _(asin) _(acos) _(atan) _(sinh) _(cosh) _(tanh) _(frexp) _(modf) _(atan2) \
-  _(lj_vm_pow) _(fmod) _(ldexp) _(lj_vm_modi) \
+  _(pow) _(fmod) _(ldexp) _(lj_vm_modi) \
   _(lj_dispatch_call) _(lj_dispatch_ins) _(lj_dispatch_stitch) \
   _(lj_dispatch_profile) _(lj_err_throw) \
   _(lj_ffh_coroutine_wrap_err) _(lj_func_closeuv) _(lj_func_newL_gc) \
@@ -89,7 +89,7 @@ typedef uint16_t HotCount;
 typedef struct GG_State {
   lua_State L;				/* Main thread. */
   global_State g;			/* Global state. */
-#if LJ_TARGET_ARM
+#if LJ_TARGET_ARM && !LJ_TARGET_NX
   /* Make g reachable via K12 encoded DISPATCH-relative addressing. */
   uint8_t align1[(16-sizeof(global_State))&15];
 #endif
@@ -99,7 +99,7 @@ typedef struct GG_State {
 #if LJ_HASJIT
   jit_State J;				/* JIT state. */
   HotCount hotcount[HOTCOUNT_SIZE];	/* Hot counters. */
-#if LJ_TARGET_ARM
+#if LJ_TARGET_ARM && !LJ_TARGET_NX
   /* Ditto for J. */
   uint8_t align2[(16-sizeof(jit_State)-sizeof(HotCount)*HOTCOUNT_SIZE)&15];
 #endif
