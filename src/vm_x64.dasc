@@ -96,24 +96,6 @@
 |.type TRACE,		GCtrace
 |.type SBUF,		SBuf
 |
-|.macro push_context
-|  push rax
-|  push rcx
-|  push rdx
-|  push r8
-|  push r9
-|  push r10
-|  push r11
-|.endmacro
-|.macro pop_context
-|  pop r11
-|  pop r10
-|  pop r9
-|  pop r8
-|  pop rdx
-|  pop rcx
-|  pop rax
-|.endmacro
 |// Stack layout while in interpreter. Must match with lj_frame.h.
 |//-----------------------------------------------------------------------
 |.if X64WIN		// x64/Windows stack layout
@@ -130,7 +112,6 @@
 |  add rsp, CFRAME_SPACE
 |  pop rbx; pop rsi; pop rdi; pop rbp
 |.endmacro
-|
 |
 |.define SAVE_CFRAME,	aword [rsp+aword*13]
 |.define SAVE_PC,	aword [rsp+aword*12]
@@ -222,10 +203,6 @@
 |// Instruction decode+dispatch. Carefully tuned (nope, lodsd is not faster).
 |.macro ins_NEXT
 |  mov RCd, [PC]
-//|  push_context
-//|  mov CARG1d, RCd
-//|  call extern lj_debug_ins_next
-//|  pop_context
 |  movzx RAd, RCH
 |  movzx OP, RCL
 |  add PC, 4
@@ -3711,10 +3688,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov STR:RC, [KBASE+RC*8]
     |  checktab TAB:RB, ->vmeta_tgets
     |->BC_TGETS_Z:	// RB = GCtab *, RC = GCstr *
-    //|  push_context
-    //|  mov  CARG1,  STR:RC
-    //|  call extern lj_debug_bc_tgets
-    //|  pop_context
     |  mov TMPRd, TAB:RB->hmask
     |  and TMPRd, STR:RC->sid
     |  imul TMPRd, #NODE
