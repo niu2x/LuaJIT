@@ -267,7 +267,6 @@ LJLIB_CF(table_sort)
   return 0;
 }
 
-
 #if LJ_52
 LJLIB_PUSH("n")
 LJLIB_CF(table_pack)
@@ -291,17 +290,6 @@ LJLIB_NOREG LJLIB_CF(table_new)		LJLIB_REC(.)
   int32_t a = lj_lib_checkint(L, 1);
   int32_t h = lj_lib_checkint(L, 2);
   lua_createtable(L, a, h);
-  return 1;
-}
-
-LJLIB_CF(table_create)
-{
-  int asize = lua_tointeger(L, 1);
-  int hsize = lua_tointeger(L, 2);
-  lua_pop(L, 2);
-  lua_pushinteger(L, 0);
-  GCtab *t = lj_tab_new_ah(L, asize, hsize);
-  settabV(L, L->top-1, t);
   return 1;
 }
 
