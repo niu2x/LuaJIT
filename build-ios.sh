@@ -11,6 +11,6 @@ make HOST_CC="clang " CROSS=${IOSBIN}/ \
 STATIC_CC=${IOSBIN}/clang DYNAMIC_CC="${IOSBIN}/clang -fPIC" \
 TARGET_LD=${IOSBIN}/clang \
 TARGET_CFLAGS="${ISDKF}" \
-TARGET_SYS=iOS
+TARGET_SYS=iOS || true
 
 lipo   -arch arm64 src/libluajit.a  -create -output libluajit.a
