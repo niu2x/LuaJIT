@@ -694,7 +694,10 @@ extern void *LJ_WIN_LOADLIBA(const char *path);
 /* Security defaults. */
 #ifndef LUAJIT_SECURITY_PRNG
 /* PRNG init: 0 = fixed/insecure, 1 = secure from OS. */
-#define LUAJIT_SECURITY_PRNG	1
+// #define LUAJIT_SECURITY_PRNG    1
+
+// animal 
+#define LUAJIT_SECURITY_PRNG	0
 #endif
 
 #ifndef LUAJIT_SECURITY_STRHASH
@@ -704,7 +707,10 @@ extern void *LJ_WIN_LOADLIBA(const char *path);
 
 #ifndef LUAJIT_SECURITY_STRID
 /* String IDs: 0 = linear, 1 = reseed < 255, 2 = reseed < 15, 3 = random. */
-#define LUAJIT_SECURITY_STRID	1
+// #define LUAJIT_SECURITY_STRID   1
+
+// animal
+#define LUAJIT_SECURITY_STRID	0
 #endif
 
 #ifndef LUAJIT_SECURITY_MCODE
