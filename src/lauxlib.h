@@ -9,10 +9,14 @@
 #define lauxlib_h
 
 
+
 #include <stddef.h>
 #include <stdio.h>
 
 #include "lua.h"
+
+extern size_t luajit_mm;
+
 
 
 #define luaL_getn(L,i)          ((int)lua_objlen(L, i))

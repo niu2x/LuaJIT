@@ -20,8 +20,13 @@
 ** - nedmalloc: http://www.nedprod.com/programs/portable/nedmalloc/
 */
 
+#include <stddef.h>
+
 #define lj_alloc_c
 #define LUA_CORE
+
+size_t luajit_mm = 0;
+
 
 /* To get the mremap prototype. Must be defined before any system includes. */
 #if defined(__linux__) && !defined(_GNU_SOURCE)
@@ -98,6 +103,7 @@ static void INIT_MMAP(void)
 /* Win64 32 bit MMAP via NtAllocateVirtualMemory. */
 static LJ_AINLINE void *CALL_MMAP(size_t size)
 {
+  luajit_mm += size;
   DWORD olderr = GetLastError();
   void *ptr = NULL;
   long st = ntavm(INVALID_HANDLE_VALUE, &ptr, NTAVM_ZEROBITS, &size,
@@ -124,6 +130,8 @@ static LJ_AINLINE void *DIRECT_MMAP(size_t size)
 /* Win32 MMAP via VirtualAlloc */
 static LJ_AINLINE void *CALL_MMAP(size_t size)
 {
+  luajit_mm += size;
+
   DWORD olderr = GetLastError();
   void *ptr = VirtualAlloc(0, size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
   SetLastError(olderr);
@@ -145,6 +153,7 @@ static LJ_AINLINE void *DIRECT_MMAP(size_t size)
 /* This function supports releasing coalesed segments */
 static LJ_AINLINE int CALL_MUNMAP(void *ptr, size_t size)
 {
+  luajit_mm -= size;
   DWORD olderr = GetLastError();
   MEMORY_BASIC_INFORMATION minfo;
   char *cptr = (char *)ptr;
@@ -190,6 +199,8 @@ static LJ_AINLINE int CALL_MUNMAP(void *ptr, size_t size)
 
 static LJ_AINLINE void *CALL_MMAP(size_t size)
 {
+  luajit_mm += size;
+
   int olderr = errno;
   void *ptr = mmap((void *)MMAP_REGION_START, size, MMAP_PROT, MAP_32BIT|MMAP_FLAGS, -1, 0);
   errno = olderr;
@@ -218,6 +229,8 @@ static LJ_AINLINE void *CALL_MMAP(size_t size)
 
 static LJ_AINLINE void *CALL_MMAP(size_t size)
 {
+  luajit_mm += size;
+
   int olderr = errno;
   /* Hint for next allocation. Doesn't need to be thread-safe. */
   static uintptr_t alloc_hint = MMAP_REGION_START;
@@ -263,6 +276,8 @@ static LJ_AINLINE void *CALL_MMAP(size_t size)
 /* 32 bit mode and GC64 mode is easy. */
 static LJ_AINLINE void *CALL_MMAP(size_t size)
 {
+  luajit_mm += size;
+
   int olderr = errno;
   void *ptr = mmap(NULL, size, MMAP_PROT, MMAP_FLAGS, -1, 0);
   errno = olderr;
@@ -277,6 +292,8 @@ static LJ_AINLINE void *CALL_MMAP(size_t size)
 static LJ_AINLINE int CALL_MUNMAP(void *ptr, size_t size)
 {
   int olderr = errno;
+  // printf("munmap %lu\n", size);
+  luajit_mm -= size;
   int ret = munmap(ptr, size);
   errno = olderr;
   return ret;
@@ -287,6 +304,7 @@ static LJ_AINLINE int CALL_MUNMAP(void *ptr, size_t size)
 static LJ_AINLINE void *CALL_MREMAP_(void *ptr, size_t osz, size_t nsz,
 				     int flags)
 {
+  luajit_mm += nsz - osz;
   int olderr = errno;
   ptr = mremap(ptr, osz, nsz, flags);
   errno = olderr;
@@ -1145,6 +1163,7 @@ static void *tmalloc_small(mstate m, size_t nb)
 
 void *lj_alloc_create(void)
 {
+
   size_t tsize = DEFAULT_GRANULARITY;
   char *tbase;
   INIT_MMAP();
