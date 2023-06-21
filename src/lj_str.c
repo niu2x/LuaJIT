@@ -175,6 +175,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
   newwhite(g, s);
   s->gct = ~LJ_TSTR;
   s->len = len;
+
   s->hash = h;
   s->reserved = 0;
   memcpy(strdatawr(s), str, len);

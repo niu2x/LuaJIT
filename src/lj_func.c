@@ -19,7 +19,9 @@
 
 void LJ_FASTCALL lj_func_freeproto(global_State *g, GCproto *pt)
 {
-  lj_mem_free(g, pt, pt->sizept, lj_alloc_debug_strcat("GCproto", proto_chunkname(pt) ));
+  const char * reason = lj_alloc_debug_strcat("GCproto", pt->alloced_chunkname, pt->linenumber );
+  free(pt->alloced_chunkname);
+  lj_mem_free(g, pt, pt->sizept, reason);
 }
 
 /* -- Upvalues ------------------------------------------------------------ */

@@ -1566,7 +1566,7 @@ static GCproto *fs_finish(LexState *ls, BCLine line)
   ofsdbg = sizept; sizept += fs_prep_var(ls, fs, &ofsvar);
 
   /* Allocate prototype and initialize its fields. */
-  pt = (GCproto *)lj_mem_newgco(L, (MSize)sizept, lj_alloc_debug_strcat("GCproto", ls->chunkname));
+  pt = (GCproto *)lj_mem_newgco(L, (MSize)sizept, lj_alloc_debug_strcat_gcstr("GCproto", ls->chunkname, ls->linenumber));
   pt->gct = ~LJ_TPROTO;
   pt->sizept = (MSize)sizept;
   pt->trace = 0;
@@ -1574,6 +1574,8 @@ static GCproto *fs_finish(LexState *ls, BCLine line)
   pt->numparams = fs->numparams;
   pt->framesize = fs->framesize;
   setgcref(pt->chunkname, obj2gco(ls->chunkname));
+  pt->alloced_chunkname = strdup(strdata(ls->chunkname));
+  pt->linenumber = ls->linenumber;
 
   /* Close potentially uninitialized gap between bc and kgc. */
   *(uint32_t *)((char *)pt + ofsk - sizeof(GCRef)*(fs->nkgc+1)) = 0;

@@ -54,7 +54,7 @@ CCOPT_arm64=
 CCOPT_ppc=
 CCOPT_mips=
 #
-CCDEBUG=
+CCDEBUG= -g
 # Uncomment the next line to generate debug information:
 #CCDEBUG= -g
 #

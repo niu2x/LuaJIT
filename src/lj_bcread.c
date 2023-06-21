@@ -340,7 +340,7 @@ GCproto *lj_bcread_proto(LexState *ls)
   ofsdbg = sizept; sizept += sizedbg;
 
   /* Allocate prototype object and initialize its fields. */
-  pt = (GCproto *)lj_mem_newgco(ls->L, (MSize)sizept, lj_alloc_debug_strcat("GCproto", ls->chunkname ));
+  pt = (GCproto *)lj_mem_newgco(ls->L, (MSize)sizept, lj_alloc_debug_strcat_gcstr("GCproto", ls->chunkname , 0));
   pt->gct = ~LJ_TPROTO;
   pt->numparams = (uint8_t)numparams;
   pt->framesize = (uint8_t)framesize;
@@ -354,6 +354,8 @@ GCproto *lj_bcread_proto(LexState *ls)
   pt->flags = (uint8_t)flags;
   pt->trace = 0;
   setgcref(pt->chunkname, obj2gco(ls->chunkname));
+  pt->alloced_chunkname = strdup(strdata(ls->chunkname));
+  pt->linenumber = 0;
 
   /* Close potentially uninitialized gap between bc and kgc. */
   *(uint32_t *)((char *)pt + ofsk - sizeof(GCRef)*(sizekgc+1)) = 0;
