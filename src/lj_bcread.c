@@ -60,7 +60,7 @@ static LJ_NOINLINE void bcread_fill(LexState *ls, MSize len, int need)
 	lua_assert(ls->pe == sbufP(&ls->sb));
 	if (ls->p != p) memmove(p, ls->p, n);
       } else {  /* Copy from buffer provided by reader. */
-	p = lj_buf_need(&ls->sb, len);
+	p = lj_buf_need(&ls->sb, len, "lexer_sb");
 	memcpy(p, ls->p, n);
       }
       ls->p = p;
@@ -75,7 +75,7 @@ static LJ_NOINLINE void bcread_fill(LexState *ls, MSize len, int need)
     }
     if (n) {  /* Append to buffer. */
       n += (MSize)sz;
-      p = lj_buf_need(&ls->sb, n < len ? len : n);
+      p = lj_buf_need(&ls->sb, n < len ? len : n, "lexer_sb");
       memcpy(sbufP(&ls->sb), buf, sz);
       setsbufP(&ls->sb, p + n);
       ls->p = p;
@@ -340,7 +340,7 @@ GCproto *lj_bcread_proto(LexState *ls)
   ofsdbg = sizept; sizept += sizedbg;
 
   /* Allocate prototype object and initialize its fields. */
-  pt = (GCproto *)lj_mem_newgco(ls->L, (MSize)sizept);
+  pt = (GCproto *)lj_mem_newgco(ls->L, (MSize)sizept, lj_alloc_debug_strcat("GCproto", ls->chunkname ));
   pt->gct = ~LJ_TPROTO;
   pt->numparams = (uint8_t)numparams;
   pt->framesize = (uint8_t)framesize;

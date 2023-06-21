@@ -17,6 +17,7 @@
 #include "lj_str.h"
 #include "lj_tab.h"
 #include "lj_func.h"
+#include "lj_alloc_debug.h"
 #include "lj_state.h"
 #include "lj_bc.h"
 #if LJ_HASFFI
@@ -415,7 +416,7 @@ static BCPos bcemit_INS(FuncState *fs, BCIns ins)
   if (LJ_UNLIKELY(pc >= fs->bclim)) {
     ptrdiff_t base = fs->bcbase - ls->bcstack;
     checklimit(fs, ls->sizebcstack, LJ_MAX_BCINS, "bytecode instructions");
-    lj_mem_growvec(fs->L, ls->bcstack, ls->sizebcstack, LJ_MAX_BCINS,BCInsLine);
+    lj_mem_growvec(fs->L, ls->bcstack, ls->sizebcstack, LJ_MAX_BCINS,BCInsLine, "lexer_bcstack");
     fs->bclim = (BCPos)(ls->sizebcstack - base);
     fs->bcbase = ls->bcstack + base;
   }
@@ -1038,7 +1039,7 @@ static void var_new(LexState *ls, BCReg n, GCstr *name)
   if (LJ_UNLIKELY(vtop >= ls->sizevstack)) {
     if (ls->sizevstack >= LJ_MAX_VSTACK)
       lj_lex_error(ls, 0, LJ_ERR_XLIMC, LJ_MAX_VSTACK);
-    lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo);
+    lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo, "lexer_vstack");
   }
   lua_assert((uintptr_t)name < VARNAME__MAX ||
 	     lj_tab_getstr(fs->kt, name) != NULL);
@@ -1145,7 +1146,7 @@ static MSize gola_new(LexState *ls, GCstr *name, uint8_t info, BCPos pc)
   if (LJ_UNLIKELY(vtop >= ls->sizevstack)) {
     if (ls->sizevstack >= LJ_MAX_VSTACK)
       lj_lex_error(ls, 0, LJ_ERR_XLIMC, LJ_MAX_VSTACK);
-    lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo);
+    lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo, "lexer_vstack");
   }
   lua_assert(name == NAME_BREAK || lj_tab_getstr(fs->kt, name) != NULL);
   /* NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj. */
@@ -1444,7 +1445,7 @@ static size_t fs_prep_var(LexState *ls, FuncState *fs, size_t *ofsvar)
   for (i = 0, n = fs->nuv; i < n; i++) {
     GCstr *s = strref(vs[fs->uvmap[i]].name);
     MSize len = s->len+1;
-    char *p = lj_buf_more(&ls->sb, len);
+    char *p = lj_buf_more(&ls->sb, len, "lexer_sb");
     p = lj_buf_wmem(p, strdata(s), len);
     setsbufP(&ls->sb, p);
   }
@@ -1457,11 +1458,11 @@ static size_t fs_prep_var(LexState *ls, FuncState *fs, size_t *ofsvar)
       BCPos startpc;
       char *p;
       if ((uintptr_t)s < VARNAME__MAX) {
-	p = lj_buf_more(&ls->sb, 1 + 2*5);
+	p = lj_buf_more(&ls->sb, 1 + 2*5, "lexer_sb");
 	*p++ = (char)(uintptr_t)s;
       } else {
 	MSize len = s->len+1;
-	p = lj_buf_more(&ls->sb, len + 2*5);
+	p = lj_buf_more(&ls->sb, len + 2*5, "lexer_sb");
 	p = lj_buf_wmem(p, strdata(s), len);
       }
       startpc = vs->startpc;
@@ -1471,7 +1472,7 @@ static size_t fs_prep_var(LexState *ls, FuncState *fs, size_t *ofsvar)
       lastpc = startpc;
     }
   }
-  lj_buf_putb(&ls->sb, '\0');  /* Terminator for varinfo. */
+  lj_buf_putb(&ls->sb, '\0', "lexer_sb");  /* Terminator for varinfo. */
   return sbuflen(&ls->sb);
 }
 
@@ -1565,7 +1566,7 @@ static GCproto *fs_finish(LexState *ls, BCLine line)
   ofsdbg = sizept; sizept += fs_prep_var(ls, fs, &ofsvar);
 
   /* Allocate prototype and initialize its fields. */
-  pt = (GCproto *)lj_mem_newgco(L, (MSize)sizept);
+  pt = (GCproto *)lj_mem_newgco(L, (MSize)sizept, lj_alloc_debug_strcat("GCproto", ls->chunkname));
   pt->gct = ~LJ_TPROTO;
   pt->sizept = (MSize)sizept;
   pt->trace = 0;

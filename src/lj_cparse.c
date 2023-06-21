@@ -89,7 +89,7 @@ static LJ_NOINLINE CPChar cp_get_bs(CPState *cp)
 /* Save character in buffer. */
 static LJ_AINLINE void cp_save(CPState *cp, CPChar c)
 {
-  lj_buf_putb(&cp->sb, c);
+  lj_buf_putb(&cp->sb, c, "cp->sb");
 }
 
 /* Skip line break. Handles "\n", "\r", "\r\n" or "\n\r". */
@@ -379,7 +379,7 @@ static void cp_init(CPState *cp)
 static void cp_cleanup(CPState *cp)
 {
   global_State *g = G(cp->L);
-  lj_buf_free(g, &cp->sb);
+  lj_buf_free(g, &cp->sb, "cp->sb");
 }
 
 /* Check and consume optional token. */

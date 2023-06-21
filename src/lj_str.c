@@ -100,7 +100,7 @@ void lj_str_resize(lua_State *L, MSize newmask)
   MSize i;
   if (g->gc.state == GCSsweepstring || newmask >= LJ_MAX_STRTAB-1)
     return;  /* No resizing during GC traversal or if already too big. */
-  newhash = lj_mem_newvec(L, newmask+1, GCRef);
+  newhash = lj_mem_newvec(L, newmask+1, GCRef, "strtab");
   memset(newhash, 0, (newmask+1)*sizeof(GCRef));
   for (i = g->strmask; i != ~(MSize)0; i--) {  /* Rehash old table. */
     GCobj *p = gcref(g->strhash[i]);
@@ -113,7 +113,7 @@ void lj_str_resize(lua_State *L, MSize newmask)
       p = next;
     }
   }
-  lj_mem_freevec(g, g->strhash, g->strmask+1, GCRef);
+  lj_mem_freevec(g, g->strhash, g->strmask+1, GCRef, "strtab");
   g->strmask = newmask;
   g->strhash = newhash;
 }
@@ -171,7 +171,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
     }
   }
   /* Nope, create a new string. */
-  s = lj_mem_newt(L, sizeof(GCstr)+len+1, GCstr);
+  s = lj_mem_newt(L, sizeof(GCstr)+len+1, GCstr, "GStr");
   newwhite(g, s);
   s->gct = ~LJ_TSTR;
   s->len = len;
@@ -192,6 +192,6 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
 void LJ_FASTCALL lj_str_free(global_State *g, GCstr *s)
 {
   g->strnum--;
-  lj_mem_free(g, s, sizestring(s));
+  lj_mem_free(g, s, sizestring(s), "GStr");
 }
 

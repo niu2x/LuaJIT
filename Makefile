@@ -154,6 +154,12 @@ amalg:
 clean:
 	$(MAKE) -C src clean
 
+dist-animal: default
+	cp src/libluajit.a /home/niu2x/project/animal-git/animal-core/engine/he.core/lua_support/luajit/linux/libluajit.a
+	cp src/*.h /home/niu2x/project/animal-git/animal-core/engine/cocos2dx/scripting/lua/lua/
+	cp src/*.h /home/niu2x/project/animal-git/animal-core/engine/he.core/lua_support/luajit/Headers/
+	cp src/*.h /home/niu2x/project/animal-git/animal-core/engine/cocos2dx/cocos2dx/base/luajit_header/
+
 .PHONY: all install amalg clean
 
 ##############################################################################

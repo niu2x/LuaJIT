@@ -543,14 +543,14 @@ LUA_API int lua_getstack(lua_State *L, int level, lua_Debug *ar)
 
 #if LJ_HASPROFILE
 /* Put the chunkname into a buffer. */
-static int debug_putchunkname(SBuf *sb, GCproto *pt, int pathstrip)
+static int debug_putchunkname(SBuf *sb, GCproto *pt, int pathstrip, const char * reason)
 {
   GCstr *name = proto_chunkname(pt);
   const char *p = strdata(name);
   if (pt->firstline == ~(BCLine)0) {
-    lj_buf_putmem(sb, "[builtin:", 9);
-    lj_buf_putstr(sb, name);
-    lj_buf_putb(sb, ']');
+    lj_buf_putmem(sb, "[builtin:", 9, reason);
+    lj_buf_putstr(sb, name, reason);
+    lj_buf_putb(sb, ']', reason);
     return 0;
   }
   if (*p == '=' || *p == '@') {
@@ -565,15 +565,15 @@ static int debug_putchunkname(SBuf *sb, GCproto *pt, int pathstrip)
 	  break;
 	}
     }
-    lj_buf_putmem(sb, p, len);
+    lj_buf_putmem(sb, p, len, reason);
   } else {
-    lj_buf_putmem(sb, "[string]", 8);
+    lj_buf_putmem(sb, "[string]", 8, reason);
   }
   return 1;
 }
 
 /* Put a compact stack dump into a buffer. */
-void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
+void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth, const char * reason)
 {
   int level = 0, dir = 1, pathstrip = 1;
   MSize lastlen = 0;
@@ -598,11 +598,11 @@ void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
 	    if (c == 'F' && isluafunc(fn)) {  /* Dump module:name for 'F'. */
 	      GCproto *pt = funcproto(fn);
 	      if (pt->firstline != ~(BCLine)0) {  /* Not a bytecode builtin. */
-		debug_putchunkname(sb, pt, pathstrip);
-		lj_buf_putb(sb, ':');
+		debug_putchunkname(sb, pt, pathstrip, reason);
+		lj_buf_putb(sb, ':', reason);
 	      }
 	    }
-	    lj_buf_putmem(sb, name, (MSize)strlen(name));
+	    lj_buf_putmem(sb, name, (MSize)strlen(name), reason);
 	    break;
 	  }  /* else: can't derive a name, dump module:line. */
 	  }
@@ -610,27 +610,27 @@ void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
 	case 'l':  /* Dump module:line. */
 	  if (isluafunc(fn)) {
 	    GCproto *pt = funcproto(fn);
-	    if (debug_putchunkname(sb, pt, pathstrip)) {
+	    if (debug_putchunkname(sb, pt, pathstrip, reason)) {
 	      /* Regular Lua function. */
 	      BCLine line = c == 'l' ? debug_frameline(L, fn, nextframe) :
 				       pt->firstline;
-	      lj_buf_putb(sb, ':');
-	      lj_strfmt_putint(sb, line >= 0 ? line : pt->firstline);
+	      lj_buf_putb(sb, ':', reason);
+	      lj_strfmt_putint(sb, line >= 0 ? line : pt->firstline, reason);
 	    }
 	  } else if (isffunc(fn)) {  /* Dump numbered builtins. */
-	    lj_buf_putmem(sb, "[builtin#", 9);
-	    lj_strfmt_putint(sb, fn->c.ffid);
-	    lj_buf_putb(sb, ']');
+	    lj_buf_putmem(sb, "[builtin#", 9, reason);
+	    lj_strfmt_putint(sb, fn->c.ffid, reason);
+	    lj_buf_putb(sb, ']', reason);
 	  } else {  /* Dump C function address. */
-	    lj_buf_putb(sb, '@');
-	    lj_strfmt_putptr(sb, fn->c.f);
+	    lj_buf_putb(sb, '@', reason);
+	    lj_strfmt_putptr(sb, fn->c.f, reason);
 	  }
 	  break;
 	case 'Z':  /* Zap trailing separator. */
 	  lastlen = sbuflen(sb);
 	  break;
 	default:
-	  lj_buf_putb(sb, c);
+	  lj_buf_putb(sb, c, reason);
 	  break;
 	}
       }

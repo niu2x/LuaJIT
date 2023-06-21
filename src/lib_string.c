@@ -93,11 +93,11 @@ LJLIB_CF(string_rep)		LJLIB_REC(.)
   if (sep && rep > 1) {
     GCstr *s2 = lj_buf_cat2str(L, sep, s);
     lj_buf_reset(sb);
-    lj_buf_putstr(sb, s);
+    lj_buf_putstr(sb, s, "tmpbuf");
     s = s2;
     rep--;
   }
-  sb = lj_buf_putstr_rep(sb, s, rep);
+  sb = lj_buf_putstr_rep(sb, s, rep, "tmpbuf");
   setstrV(L, L->top-1, lj_buf_str(L, sb));
   lj_gc_check(L);
   return 1;
@@ -113,9 +113,9 @@ LJLIB_ASM_(string_upper)  LJLIB_REC(string_op IRCALL_lj_buf_putstr_upper)
 
 /* ------------------------------------------------------------------------ */
 
-static int writer_buf(lua_State *L, const void *p, size_t size, void *sb)
+static int writer_buf(lua_State *L, const void *p, size_t size, void *sb, const char *reason)
 {
-  lj_buf_putmem((SBuf *)sb, p, (MSize)size);
+  lj_buf_putmem((SBuf *)sb, p, (MSize)size, reason);
   UNUSED(L);
   return 0;
 }
@@ -673,7 +673,7 @@ again:
   lj_strfmt_init(&fs, strdata(fmt), fmt->len);
   while ((sf = lj_strfmt_parse(&fs)) != STRFMT_EOF) {
     if (sf == STRFMT_LIT) {
-      lj_buf_putmem(sb, fs.str, fs.len);
+      lj_buf_putmem(sb, fs.str, fs.len, "tmpbuf");
     } else if (sf == STRFMT_ERR) {
       lj_err_callerv(L, LJ_ERR_STRFMT, strdata(lj_str_new(L, fs.str, fs.len)));
     } else {
@@ -684,37 +684,37 @@ again:
 	if (tvisint(L->base+arg-1)) {
 	  int32_t k = intV(L->base+arg-1);
 	  if (sf == STRFMT_INT)
-	    lj_strfmt_putint(sb, k);  /* Shortcut for plain %d. */
+	    lj_strfmt_putint(sb, k, "tmpbuf");  /* Shortcut for plain %d. */
 	  else
-	    lj_strfmt_putfxint(sb, sf, k);
+	    lj_strfmt_putfxint(sb, sf, k, "tmpbuf");
 	} else {
-	  lj_strfmt_putfnum_int(sb, sf, lj_lib_checknum(L, arg));
+	  lj_strfmt_putfnum_int(sb, sf, lj_lib_checknum(L, arg), "tmpbuf");
 	}
 	break;
       case STRFMT_UINT:
 	if (tvisint(L->base+arg-1))
-	  lj_strfmt_putfxint(sb, sf, intV(L->base+arg-1));
+	  lj_strfmt_putfxint(sb, sf, intV(L->base+arg-1), "tmpbuf");
 	else
-	  lj_strfmt_putfnum_uint(sb, sf, lj_lib_checknum(L, arg));
+	  lj_strfmt_putfnum_uint(sb, sf, lj_lib_checknum(L, arg), "tmpbuf");
 	break;
       case STRFMT_NUM:
-	lj_strfmt_putfnum(sb, sf, lj_lib_checknum(L, arg));
+	lj_strfmt_putfnum(sb, sf, lj_lib_checknum(L, arg), "tmpbuf");
 	break;
       case STRFMT_STR: {
 	GCstr *str = string_fmt_tostring(L, arg, retry);
 	if (str == NULL)
 	  retry = 1;
 	else if ((sf & STRFMT_T_QUOTED))
-	  lj_strfmt_putquoted(sb, str);  /* No formatting. */
+	  lj_strfmt_putquoted(sb, str, "tmpbuf");  /* No formatting. */
 	else
-	  lj_strfmt_putfstr(sb, sf, str);
+	  lj_strfmt_putfstr(sb, sf, str, "tmpbuf");
 	break;
 	}
       case STRFMT_CHAR:
-	lj_strfmt_putfchar(sb, sf, lj_lib_checkint(L, arg));
+	lj_strfmt_putfchar(sb, sf, lj_lib_checkint(L, arg), "tmpbuf");
 	break;
       case STRFMT_PTR:  /* No formatting. */
-	lj_strfmt_putptr(sb, lj_obj_ptr(L->base+arg-1));
+	lj_strfmt_putptr(sb, lj_obj_ptr(L->base+arg-1), "tmpbuf");
 	break;
       default:
 	lua_assert(0);

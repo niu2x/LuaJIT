@@ -585,7 +585,7 @@ static void atomic(global_State *g, lua_State *L)
   /* All marking done, clear weak tables. */
   gc_clearweak(gcref(g->gc.weak));
 
-  lj_buf_shrink(L, &g->tmpbuf);  /* Shrink temp buffer. */
+  lj_buf_shrink(L, &g->tmpbuf, "tmpbuf");  /* Shrink temp buffer. */
 
   /* Prepare for sweep phase. */
   g->gc.currentwhite = (uint8_t)otherwhite(g);  /* Flip current white. */
@@ -802,7 +802,7 @@ void lj_gc_barriertrace(global_State *g, uint32_t traceno)
 /* -- Allocator ----------------------------------------------------------- */
 
 /* Call pluggable memory allocator to allocate or resize a fragment. */
-void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
+void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz, const char *reason)
 {
   global_State *g = G(L);
   lua_assert((osz == 0) == (p == NULL));
@@ -812,11 +812,12 @@ void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
   lua_assert((nsz == 0) == (p == NULL));
   lua_assert(checkptrGC(p));
   g->gc.total = (g->gc.total - osz) + nsz;
+  lj_alloc_debug((long long)(nsz) - (long long)(osz), reason);
   return p;
 }
 
 /* Allocate new GC object and link it to the root set. */
-void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size)
+void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size, const char *reason)
 {
   global_State *g = G(L);
   GCobj *o = (GCobj *)g->allocf(g->allocd, NULL, 0, size);
@@ -824,6 +825,7 @@ void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size)
     lj_err_mem(L);
   lua_assert(checkptrGC(o));
   g->gc.total += size;
+  lj_alloc_debug((long long )size, reason);
   setgcrefr(o->gch.nextgc, g->gc.root);
   setgcref(g->gc.root, o);
   newwhite(g, o);
@@ -831,14 +833,14 @@ void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size)
 }
 
 /* Resize growable vector. */
-void *lj_mem_grow(lua_State *L, void *p, MSize *szp, MSize lim, MSize esz)
+void *lj_mem_grow(lua_State *L, void *p, MSize *szp, MSize lim, MSize esz, const char *reason)
 {
   MSize sz = (*szp) << 1;
   if (sz < LJ_MIN_VECSZ)
     sz = LJ_MIN_VECSZ;
   if (sz > lim)
     sz = lim;
-  p = lj_mem_realloc(L, p, (*szp)*esz, sz*esz);
+  p = lj_mem_realloc(L, p, (*szp)*esz, sz*esz, reason);
   *szp = sz;
   return p;
 }

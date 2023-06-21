@@ -62,7 +62,7 @@ static LJ_AINLINE void newhpart(lua_State *L, GCtab *t, uint32_t hbits)
   if (hbits > LJ_MAX_HBITS)
     lj_err_msg(L, LJ_ERR_TABOV);
   hsize = 1u << hbits;
-  node = lj_mem_newvec(L, hsize, Node);
+  node = lj_mem_newvec(L, hsize, Node, "tab_hash");
   setmref(t->node, node);
   setfreetop(t, node, &node[hsize]);
   t->hmask = hsize-1;
@@ -105,7 +105,7 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
   if (LJ_MAX_COLOSIZE != 0 && asize > 0 && asize <= LJ_MAX_COLOSIZE) {
     Node *nilnode;
     lua_assert((sizeof(GCtab) & 7) == 0);
-    t = (GCtab *)lj_mem_newgco(L, sizetabcolo(asize));
+    t = (GCtab *)lj_mem_newgco(L, sizetabcolo(asize), "GCtab_colo");
     t->gct = ~LJ_TTAB;
     t->nomm = (uint8_t)~0;
     t->colo = (int8_t)asize;
@@ -120,7 +120,7 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
 #endif
   } else {  /* Otherwise separately allocate the array part. */
     Node *nilnode;
-    t = lj_mem_newobj(L, GCtab);
+    t = lj_mem_newobj(L, GCtab, "GCtab");
     t->gct = ~LJ_TTAB;
     t->nomm = (uint8_t)~0;
     t->colo = 0;
@@ -136,7 +136,7 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
     if (asize > 0) {
       if (asize > LJ_MAX_ASIZE)
 	lj_err_msg(L, LJ_ERR_TABOV);
-      setmref(t->array, lj_mem_newvec(L, asize, TValue));
+      setmref(t->array, lj_mem_newvec(L, asize, TValue, "tab_array"));
       t->asize = asize;
     }
   }
@@ -234,13 +234,13 @@ void LJ_FASTCALL lj_tab_clear(GCtab *t)
 void LJ_FASTCALL lj_tab_free(global_State *g, GCtab *t)
 {
   if (t->hmask > 0)
-    lj_mem_freevec(g, noderef(t->node), t->hmask+1, Node);
+    lj_mem_freevec(g, noderef(t->node), t->hmask+1, Node, "tab_hash");
   if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
-    lj_mem_freevec(g, tvref(t->array), t->asize, TValue);
+    lj_mem_freevec(g, tvref(t->array), t->asize, TValue, "tab_array");
   if (LJ_MAX_COLOSIZE != 0 && t->colo)
-    lj_mem_free(g, t, sizetabcolo((uint32_t)t->colo & 0x7f));
+    lj_mem_free(g, t, sizetabcolo((uint32_t)t->colo & 0x7f), "GCtab_colo");
   else
-    lj_mem_freet(g, t);
+    lj_mem_freet(g, t, "GCtab");
 }
 
 /* -- Table resizing ------------------------------------------------------ */
@@ -259,13 +259,13 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
     if (LJ_MAX_COLOSIZE != 0 && t->colo > 0) {
       /* A colocated array must be separated and copied. */
       TValue *oarray = tvref(t->array);
-      array = lj_mem_newvec(L, asize, TValue);
+      array = lj_mem_newvec(L, asize, TValue, "tab_array");
       t->colo = (int8_t)(t->colo | 0x80);  /* Mark as separated (colo < 0). */
       for (i = 0; i < oldasize; i++)
 	copyTV(L, &array[i], &oarray[i]);
     } else {
       array = (TValue *)lj_mem_realloc(L, tvref(t->array),
-			  oldasize*sizeof(TValue), asize*sizeof(TValue));
+			  oldasize*sizeof(TValue), asize*sizeof(TValue), "tab_array");
     }
     setmref(t->array, array);
     t->asize = asize;
@@ -294,7 +294,7 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
     /* Physically shrink only separated arrays. */
     if (LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
       setmref(t->array, lj_mem_realloc(L, array,
-	      oldasize*sizeof(TValue), asize*sizeof(TValue)));
+	      oldasize*sizeof(TValue), asize*sizeof(TValue), "tab_array"));
   }
   if (oldhmask > 0) {  /* Reinsert pairs from old hash part. */
     global_State *g;
@@ -305,7 +305,7 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
 	copyTV(L, lj_tab_set(L, t, &n->key), &n->val);
     }
     g = G(L);
-    lj_mem_freevec(g, oldnode, oldhmask+1, Node);
+    lj_mem_freevec(g, oldnode, oldhmask+1, Node, "tab_hash");
   }
 }
 

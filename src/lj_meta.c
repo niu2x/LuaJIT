@@ -284,16 +284,16 @@ TValue *lj_meta_cat(lua_State *L, TValue *top, int left)
       } while (--left > 0 && (tvisstr(o-1) || tvisnumber(o-1)));
       if (tlen >= LJ_MAX_STR) lj_err_msg(L, LJ_ERR_STROV);
       sb = lj_buf_tmp_(L);
-      lj_buf_more(sb, (MSize)tlen);
+      lj_buf_more(sb, (MSize)tlen, "tmpbuf");
       for (e = top, top = o; o <= e; o++) {
 	if (tvisstr(o)) {
 	  GCstr *s = strV(o);
 	  MSize len = s->len;
-	  lj_buf_putmem(sb, strdata(s), len);
+	  lj_buf_putmem(sb, strdata(s), len, "tmpbuf");
 	} else if (tvisint(o)) {
-	  lj_strfmt_putint(sb, intV(o));
+	  lj_strfmt_putint(sb, intV(o), "tmpbuf");
 	} else {
-	  lj_strfmt_putfnum(sb, STRFMT_G14, numV(o));
+	  lj_strfmt_putfnum(sb, STRFMT_G14, numV(o), "tmpbuf");
 	}
       }
       setstrV(L, top, lj_buf_str(L, sb));

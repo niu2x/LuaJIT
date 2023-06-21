@@ -162,7 +162,7 @@ LJLIB_CF(bit_tohex)		LJLIB_REC(.)
 #else
   if (n < 8) b &= (1u << 4*n)-1;
 #endif
-  sb = lj_strfmt_putfxint(sb, sf, b);
+  sb = lj_strfmt_putfxint(sb, sf, b, "tmpbuf");
   setstrV(L, L->top-1, lj_buf_str(L, sb));
   lj_gc_check(L);
   return 1;

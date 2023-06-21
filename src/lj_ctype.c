@@ -164,7 +164,7 @@ CTypeID lj_ctype_new(CTState *cts, CType **ctp)
     cts->tab = ct;
     cts->sizetab = id+1;
 #else
-    lj_mem_growvec(cts->L, cts->tab, cts->sizetab, CTID_MAX, CType);
+    lj_mem_growvec(cts->L, cts->tab, cts->sizetab, CTID_MAX, CType, "cts->tab");
 #endif
   }
   cts->top = id+1;
@@ -192,7 +192,7 @@ CTypeID lj_ctype_intern(CTState *cts, CTInfo info, CTSize size)
   id = cts->top;
   if (LJ_UNLIKELY(id >= cts->sizetab)) {
     if (id >= CTID_MAX) lj_err_msg(cts->L, LJ_ERR_TABOV);
-    lj_mem_growvec(cts->L, cts->tab, cts->sizetab, CTID_MAX, CType);
+    lj_mem_growvec(cts->L, cts->tab, cts->sizetab, CTID_MAX, CType, "cts->tab");
   }
   cts->top = id+1;
   cts->tab[id].info = info;
@@ -579,10 +579,10 @@ GCstr *lj_ctype_repr_complex(lua_State *L, void *sp, CTSize size)
   } else {
     re.n = (double)*(float *)sp; im.n = (double)((float *)sp)[1];
   }
-  lj_strfmt_putfnum(sb, STRFMT_G14, re.n);
-  if (!(im.u32.hi & 0x80000000u) || im.n != im.n) lj_buf_putchar(sb, '+');
-  lj_strfmt_putfnum(sb, STRFMT_G14, im.n);
-  lj_buf_putchar(sb, sbufP(sb)[-1] >= 'a' ? 'I' : 'i');
+  lj_strfmt_putfnum(sb, STRFMT_G14, re.n, "tmpbuf");
+  if (!(im.u32.hi & 0x80000000u) || im.n != im.n) lj_buf_putchar(sb, '+', "tmpbuf");
+  lj_strfmt_putfnum(sb, STRFMT_G14, im.n, "tmpbuf");
+  lj_buf_putchar(sb, sbufP(sb)[-1] >= 'a' ? 'I' : 'i', "tmpbuf");
   return lj_buf_str(L, sb);
 }
 
@@ -591,8 +591,8 @@ GCstr *lj_ctype_repr_complex(lua_State *L, void *sp, CTSize size)
 /* Initialize C type table and state. */
 CTState *lj_ctype_init(lua_State *L)
 {
-  CTState *cts = lj_mem_newt(L, sizeof(CTState), CTState);
-  CType *ct = lj_mem_newvec(L, CTTYPETAB_MIN, CType);
+  CTState *cts = lj_mem_newt(L, sizeof(CTState), CTState, "CTState");
+  CType *ct = lj_mem_newvec(L, CTTYPETAB_MIN, CType, "cts->tab");
   const char *name = lj_ctype_typenames;
   CTypeID id;
   memset(cts, 0, sizeof(CTState));
@@ -628,9 +628,9 @@ void lj_ctype_freestate(global_State *g)
   CTState *cts = ctype_ctsG(g);
   if (cts) {
     lj_ccallback_mcode_free(cts);
-    lj_mem_freevec(g, cts->tab, cts->sizetab, CType);
-    lj_mem_freevec(g, cts->cb.cbid, cts->cb.sizeid, CTypeID1);
-    lj_mem_freet(g, cts);
+    lj_mem_freevec(g, cts->tab, cts->sizetab, CType, "cts->tab");
+    lj_mem_freevec(g, cts->cb.cbid, cts->cb.sizeid, CTypeID1, "cts->cb.cbid");
+    lj_mem_freet(g, cts, "CTState");
   }
 }
 

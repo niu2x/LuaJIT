@@ -266,7 +266,7 @@ static int nd_similar(uint32_t* nd, uint32_t ndhi, uint32_t* ref, MSize hilen,
 /* -- Formatted conversions to buffer ------------------------------------- */
 
 /* Write formatted floating-point number to either sb or p. */
-static char *lj_strfmt_wfnum(SBuf *sb, SFormat sf, lua_Number n, char *p)
+static char *lj_strfmt_wfnum(SBuf *sb, SFormat sf, lua_Number n, char *p, const char *reason)
 {
   MSize width = STRFMT_WIDTH(sf), prec = STRFMT_PREC(sf), len;
   TValue t;
@@ -284,7 +284,7 @@ static char *lj_strfmt_wfnum(SBuf *sb, SFormat sf, lua_Number n, char *p)
       else if ((sf & STRFMT_F_SPACE)) prefix = ' ';
     }
     len = 3 + (prefix != 0);
-    if (!p) p = lj_buf_more(sb, width > len ? width : len);
+    if (!p) p = lj_buf_more(sb, width > len ? width : len, reason);
     if (!(sf & STRFMT_F_LEFT)) while (width-- > len) *p++ = ' ';
     if (prefix) *p++ = prefix;
     *p++ = (char)(ch >> 16); *p++ = (char)(ch >> 8); *p++ = (char)ch;
@@ -322,7 +322,7 @@ static char *lj_strfmt_wfnum(SBuf *sb, SFormat sf, lua_Number n, char *p)
     }
     len = 5 + ndigits_dec((uint32_t)e) + prec + (prefix != 0)
 	    + ((prec | (sf & STRFMT_F_ALT)) != 0);
-    if (!p) p = lj_buf_more(sb, width > len ? width : len);
+    if (!p) p = lj_buf_more(sb, width > len ? width : len, reason);
     if (!(sf & (STRFMT_F_LEFT | STRFMT_F_ZERO))) {
       while (width-- > len) *p++ = ' ';
     }
@@ -466,7 +466,7 @@ static char *lj_strfmt_wfnum(SBuf *sb, SFormat sf, lua_Number n, char *p)
       }
       len = 3 + prec + (prefix != 0) + ndigits_dec((uint32_t)nde) + (nde < 10)
 	      + ((prec | (sf & STRFMT_F_ALT)) != 0);
-      if (!p) p = lj_buf_more(sb, (width > len ? width : len) + 5);
+      if (!p) p = lj_buf_more(sb, (width > len ? width : len) + 5, reason);
       if (!(sf & (STRFMT_F_LEFT | STRFMT_F_ZERO))) {
 	while (width-- > len) *p++ = ' ';
       }
@@ -534,7 +534,7 @@ static char *lj_strfmt_wfnum(SBuf *sb, SFormat sf, lua_Number n, char *p)
       }
       len = ndhi * 9 + ndigits_dec(nd[ndhi]) + prec + (prefix != 0)
 		     + ((prec | (sf & STRFMT_F_ALT)) != 0);
-      if (!p) p = lj_buf_more(sb, (width > len ? width : len) + 8);
+      if (!p) p = lj_buf_more(sb, (width > len ? width : len) + 8, reason);
       if (!(sf & (STRFMT_F_LEFT | STRFMT_F_ZERO))) {
 	while (width-- > len) *p++ = ' ';
       }
@@ -573,9 +573,9 @@ static char *lj_strfmt_wfnum(SBuf *sb, SFormat sf, lua_Number n, char *p)
 }
 
 /* Add formatted floating-point number to buffer. */
-SBuf *lj_strfmt_putfnum(SBuf *sb, SFormat sf, lua_Number n)
+SBuf *lj_strfmt_putfnum(SBuf *sb, SFormat sf, lua_Number n, const char *reason)
 {
-  setsbufP(sb, lj_strfmt_wfnum(sb, sf, n, NULL));
+  setsbufP(sb, lj_strfmt_wfnum(sb, sf, n, NULL, reason));
   return sb;
 }
 
@@ -585,7 +585,7 @@ SBuf *lj_strfmt_putfnum(SBuf *sb, SFormat sf, lua_Number n)
 GCstr * LJ_FASTCALL lj_strfmt_num(lua_State *L, cTValue *o)
 {
   char buf[STRFMT_MAXBUF_NUM];
-  MSize len = (MSize)(lj_strfmt_wfnum(NULL, STRFMT_G14, o->n, buf) - buf);
+  MSize len = (MSize)(lj_strfmt_wfnum(NULL, STRFMT_G14, o->n, buf, "should_not_exist") - buf);
   return lj_str_new(L, buf, len);
 }
 

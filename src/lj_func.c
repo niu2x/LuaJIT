@@ -19,7 +19,7 @@
 
 void LJ_FASTCALL lj_func_freeproto(global_State *g, GCproto *pt)
 {
-  lj_mem_free(g, pt, pt->sizept);
+  lj_mem_free(g, pt, pt->sizept, lj_alloc_debug_strcat("GCproto", proto_chunkname(pt) ));
 }
 
 /* -- Upvalues ------------------------------------------------------------ */
@@ -49,7 +49,7 @@ static GCupval *func_finduv(lua_State *L, TValue *slot)
     pp = &p->nextgc;
   }
   /* No matching upvalue found. Create a new one. */
-  uv = lj_mem_newt(L, sizeof(GCupval), GCupval);
+  uv = lj_mem_newt(L, sizeof(GCupval), GCupval, "GCupval");
   newwhite(g, uv);
   uv->gct = ~LJ_TUPVAL;
   uv->closed = 0;  /* Still open. */
@@ -68,7 +68,7 @@ static GCupval *func_finduv(lua_State *L, TValue *slot)
 /* Create an empty and closed upvalue. */
 static GCupval *func_emptyuv(lua_State *L)
 {
-  GCupval *uv = (GCupval *)lj_mem_newgco(L, sizeof(GCupval));
+  GCupval *uv = (GCupval *)lj_mem_newgco(L, sizeof(GCupval), "GCupval");
   uv->gct = ~LJ_TUPVAL;
   uv->closed = 1;
   setnilV(&uv->tv);
@@ -99,14 +99,14 @@ void LJ_FASTCALL lj_func_freeuv(global_State *g, GCupval *uv)
 {
   if (!uv->closed)
     unlinkuv(uv);
-  lj_mem_freet(g, uv);
+  lj_mem_freet(g, uv, "GCupval");
 }
 
 /* -- Functions (closures) ------------------------------------------------ */
 
 GCfunc *lj_func_newC(lua_State *L, MSize nelems, GCtab *env)
 {
-  GCfunc *fn = (GCfunc *)lj_mem_newgco(L, sizeCfunc(nelems));
+  GCfunc *fn = (GCfunc *)lj_mem_newgco(L, sizeCfunc(nelems), "CFunc");
   fn->c.gct = ~LJ_TFUNC;
   fn->c.ffid = FF_C;
   fn->c.nupvalues = (uint8_t)nelems;
@@ -119,7 +119,7 @@ GCfunc *lj_func_newC(lua_State *L, MSize nelems, GCtab *env)
 static GCfunc *func_newL(lua_State *L, GCproto *pt, GCtab *env)
 {
   uint32_t count;
-  GCfunc *fn = (GCfunc *)lj_mem_newgco(L, sizeLfunc((MSize)pt->sizeuv));
+  GCfunc *fn = (GCfunc *)lj_mem_newgco(L, sizeLfunc((MSize)pt->sizeuv), "LFunc");
   fn->l.gct = ~LJ_TFUNC;
   fn->l.ffid = FF_LUA;
   fn->l.nupvalues = 0;  /* Set to zero until upvalues are initialized. */
@@ -180,6 +180,6 @@ void LJ_FASTCALL lj_func_free(global_State *g, GCfunc *fn)
 {
   MSize size = isluafunc(fn) ? sizeLfunc((MSize)fn->l.nupvalues) :
 			       sizeCfunc((MSize)fn->c.nupvalues);
-  lj_mem_free(g, fn, size);
+  lj_mem_free(g, fn, size, isluafunc(fn) ? "LFunc" : "CFunc");
 }
 

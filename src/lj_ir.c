@@ -75,10 +75,10 @@ void LJ_FASTCALL lj_ir_growtop(jit_State *J)
   MSize szins = J->irtoplim - J->irbotlim;
   if (szins) {
     baseir = (IRIns *)lj_mem_realloc(J->L, baseir, szins*sizeof(IRIns),
-				     2*szins*sizeof(IRIns));
+				     2*szins*sizeof(IRIns), "J->baseir");
     J->irtoplim = J->irbotlim + 2*szins;
   } else {
-    baseir = (IRIns *)lj_mem_realloc(J->L, NULL, 0, LJ_MIN_IRSZ*sizeof(IRIns));
+    baseir = (IRIns *)lj_mem_realloc(J->L, NULL, 0, LJ_MIN_IRSZ*sizeof(IRIns), "J->baseir");
     J->irbotlim = REF_BASE - LJ_MIN_IRSZ/4;
     J->irtoplim = J->irbotlim + LJ_MIN_IRSZ;
   }
@@ -101,10 +101,10 @@ static void lj_ir_growbot(jit_State *J)
     J->cur.ir = J->irbuf = baseir - J->irbotlim;
   } else {
     /* Double the buffer size, but split the growth amongst top/bottom. */
-    IRIns *newbase = lj_mem_newt(J->L, 2*szins*sizeof(IRIns), IRIns);
+    IRIns *newbase = lj_mem_newt(J->L, 2*szins*sizeof(IRIns), IRIns, "J->baseir");
     MSize ofs = szins >= 256 ? 128 : (szins >> 1);  /* Limit bottom growth. */
     memcpy(newbase + ofs, baseir, (J->cur.nins - J->irbotlim)*sizeof(IRIns));
-    lj_mem_free(G(J->L), baseir, szins*sizeof(IRIns));
+    lj_mem_free(G(J->L), baseir, szins*sizeof(IRIns), "J->baseir");
     J->irbotlim -= ofs;
     J->irtoplim = J->irbotlim + 2*szins;
     J->cur.ir = J->irbuf = newbase - J->irbotlim;
@@ -206,7 +206,7 @@ void lj_ir_k64_freeall(jit_State *J)
   K64Array *k;
   for (k = mref(J->k64, K64Array); k; ) {
     K64Array *next = mref(k->next, K64Array);
-    lj_mem_free(J2G(J), k, sizeof(K64Array));
+    lj_mem_free(J2G(J), k, sizeof(K64Array), "k64");
     k = next;
   }
   setmref(J->k64, NULL);
@@ -217,7 +217,7 @@ static TValue *ir_k64_add(jit_State *J, K64Array *kp, uint64_t u64)
 {
   TValue *ntv;
   if (!(kp && kp->numk < LJ_MIN_K64SZ)) {  /* Allocate a new array. */
-    K64Array *kn = lj_mem_newt(J->L, sizeof(K64Array), K64Array);
+    K64Array *kn = lj_mem_newt(J->L, sizeof(K64Array), K64Array, "k64");
     setmref(kn->next, NULL);
     kn->numk = 0;
     if (kp)

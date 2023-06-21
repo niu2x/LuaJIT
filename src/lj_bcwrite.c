@@ -36,11 +36,11 @@ typedef struct BCWriteCtx {
 /* Write a single constant key/value of a template table. */
 static void bcwrite_ktabk(BCWriteCtx *ctx, cTValue *o, int narrow)
 {
-  char *p = lj_buf_more(&ctx->sb, 1+10);
+  char *p = lj_buf_more(&ctx->sb, 1+10, "BCWriteCtx_sb");
   if (tvisstr(o)) {
     const GCstr *str = strV(o);
     MSize len = str->len;
-    p = lj_buf_more(&ctx->sb, 5+len);
+    p = lj_buf_more(&ctx->sb, 5+len, "BCWriteCtx_sb");
     p = lj_strfmt_wuleb128(p, BCDUMP_KTAB_STR+len);
     p = lj_buf_wmem(p, strdata(str), len);
   } else if (tvisint(o)) {
@@ -142,7 +142,7 @@ static void bcwrite_kgc(BCWriteCtx *ctx, GCproto *pt)
       need = 1+2*5;
     }
     /* Write constant type. */
-    p = lj_buf_more(&ctx->sb, need);
+    p = lj_buf_more(&ctx->sb, need, "BCWriteCtx_sb");
     p = lj_strfmt_wuleb128(p, tp);
     /* Write constant data (if any). */
     if (tp >= BCDUMP_KGC_STR) {
@@ -170,7 +170,7 @@ static void bcwrite_knum(BCWriteCtx *ctx, GCproto *pt)
 {
   MSize i, sizekn = pt->sizekn;
   cTValue *o = mref(pt->k, TValue);
-  char *p = lj_buf_more(&ctx->sb, 10*sizekn);
+  char *p = lj_buf_more(&ctx->sb, 10*sizekn, "BCWriteCtx_sb");
   for (i = 0; i < sizekn; i++, o++) {
     int32_t k;
     if (tvisint(o)) {
@@ -249,7 +249,7 @@ static void bcwrite_proto(BCWriteCtx *ctx, GCproto *pt)
 
   /* Start writing the prototype info to a buffer. */
   p = lj_buf_need(&ctx->sb,
-		  5+4+6*5+(pt->sizebc-1)*(MSize)sizeof(BCIns)+pt->sizeuv*2);
+		  5+4+6*5+(pt->sizebc-1)*(MSize)sizeof(BCIns)+pt->sizeuv*2, "BCWriteCtx_sb");
   p += 5;  /* Leave room for final size. */
 
   /* Write prototype header. */
@@ -281,7 +281,7 @@ static void bcwrite_proto(BCWriteCtx *ctx, GCproto *pt)
 
   /* Write debug info, if not stripped. */
   if (sizedbg) {
-    p = lj_buf_more(&ctx->sb, sizedbg);
+    p = lj_buf_more(&ctx->sb, sizedbg, "BCWriteCtx_sb");
     p = lj_buf_wmem(p, proto_lineinfo(pt), sizedbg);
     setsbufP(&ctx->sb, p);
   }
@@ -303,7 +303,7 @@ static void bcwrite_header(BCWriteCtx *ctx)
   GCstr *chunkname = proto_chunkname(ctx->pt);
   const char *name = strdata(chunkname);
   MSize len = chunkname->len;
-  char *p = lj_buf_need(&ctx->sb, 5+5+len);
+  char *p = lj_buf_need(&ctx->sb, 5+5+len, "BCWriteCtx_sb");
   *p++ = BCDUMP_HEAD1;
   *p++ = BCDUMP_HEAD2;
   *p++ = BCDUMP_HEAD3;
@@ -334,7 +334,7 @@ static TValue *cpwriter(lua_State *L, lua_CFunction dummy, void *ud)
 {
   BCWriteCtx *ctx = (BCWriteCtx *)ud;
   UNUSED(L); UNUSED(dummy);
-  lj_buf_need(&ctx->sb, 1024);  /* Avoids resize for most prototypes. */
+  lj_buf_need(&ctx->sb, 1024, "BCWriteCtx_sb");  /* Avoids resize for most prototypes. */
   bcwrite_header(ctx);
   bcwrite_proto(ctx, ctx->pt);
   bcwrite_footer(ctx);
@@ -355,7 +355,7 @@ int lj_bcwrite(lua_State *L, GCproto *pt, lua_Writer writer, void *data,
   lj_buf_init(L, &ctx.sb);
   status = lj_vm_cpcall(L, NULL, &ctx, cpwriter);
   if (status == 0) status = ctx.status;
-  lj_buf_free(G(sbufL(&ctx.sb)), &ctx.sb);
+  lj_buf_free(G(sbufL(&ctx.sb)), &ctx.sb, "BCWriteCtx_sb");
   return status;
 }
 

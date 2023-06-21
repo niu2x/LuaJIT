@@ -62,7 +62,7 @@ static LJ_AINLINE LexChar lex_next(LexState *ls)
 /* Save character. */
 static LJ_AINLINE void lex_save(LexState *ls, LexChar c)
 {
-  lj_buf_putb(&ls->sb, c);
+  lj_buf_putb(&ls->sb, c, "lexer_sb");
 }
 
 /* Save previous character and get next character. */
@@ -441,9 +441,9 @@ int lj_lex_setup(lua_State *L, LexState *ls)
 void lj_lex_cleanup(lua_State *L, LexState *ls)
 {
   global_State *g = G(L);
-  lj_mem_freevec(g, ls->bcstack, ls->sizebcstack, BCInsLine);
-  lj_mem_freevec(g, ls->vstack, ls->sizevstack, VarInfo);
-  lj_buf_free(g, &ls->sb);
+  lj_mem_freevec(g, ls->bcstack, ls->sizebcstack, BCInsLine, "lexer_bcstack");
+  lj_mem_freevec(g, ls->vstack, ls->sizevstack, VarInfo, "lexer_vstack");
+  lj_buf_free(g, &ls->sb, "lexer_sb");
 }
 
 /* Return next lexical token. */

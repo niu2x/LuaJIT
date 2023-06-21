@@ -71,7 +71,7 @@ static TraceNo trace_findfree(jit_State *J)
   osz = J->sizetrace;
   if (osz >= lim)
     return 0;  /* Too many traces. */
-  lj_mem_growvec(J->L, J->trace, J->sizetrace, lim, GCRef);
+  lj_mem_growvec(J->L, J->trace, J->sizetrace, lim, GCRef, "J->trace");
   for (; osz < J->sizetrace; osz++)
     setgcrefnull(J->trace[osz]);
   return J->freetrace;
@@ -125,7 +125,7 @@ static GCtrace *trace_save_alloc(jit_State *J)
   size_t sz = sztr + szins +
 	      J->cur.nsnap*sizeof(SnapShot) +
 	      J->cur.nsnapmap*sizeof(SnapEntry);
-  return lj_mem_newt(J->L, (MSize)sz, GCtrace);
+  return lj_mem_newt(J->L, (MSize)sz, GCtrace, "GCtrace");
 }
 
 /* Save current trace by copying and compacting it. */
@@ -164,7 +164,7 @@ void LJ_FASTCALL lj_trace_free(global_State *g, GCtrace *T)
   }
   lj_mem_free(g, T,
     ((sizeof(GCtrace)+7)&~7) + (T->nins-T->nk)*sizeof(IRIns) +
-    T->nsnap*sizeof(SnapShot) + T->nsnapmap*sizeof(SnapEntry));
+    T->nsnap*sizeof(SnapShot) + T->nsnapmap*sizeof(SnapEntry), "GCtrace");
 }
 
 /* Re-enable compiling a prototype by unpatching any modified bytecode. */
@@ -319,10 +319,10 @@ void lj_trace_freestate(global_State *g)
 #endif
   lj_mcode_free(J);
   lj_ir_k64_freeall(J);
-  lj_mem_freevec(g, J->snapmapbuf, J->sizesnapmap, SnapEntry);
-  lj_mem_freevec(g, J->snapbuf, J->sizesnap, SnapShot);
-  lj_mem_freevec(g, J->irbuf + J->irbotlim, J->irtoplim - J->irbotlim, IRIns);
-  lj_mem_freevec(g, J->trace, J->sizetrace, GCRef);
+  lj_mem_freevec(g, J->snapmapbuf, J->sizesnapmap, SnapEntry, "J->snapmapbuf");
+  lj_mem_freevec(g, J->snapbuf, J->sizesnap, SnapShot, "J->snapbuf");
+  lj_mem_freevec(g, J->irbuf + J->irbotlim, J->irtoplim - J->irbotlim, IRIns, "J->baseir");
+  lj_mem_freevec(g, J->trace, J->sizetrace, GCRef, "J->trace");
 }
 
 /* -- Penalties and blacklisting ------------------------------------------ */

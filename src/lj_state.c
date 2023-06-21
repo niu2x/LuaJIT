@@ -29,6 +29,8 @@
 #include "lj_alloc.h"
 #include "luajit.h"
 
+#include "lj_alloc_debug.h"
+
 /* -- Stack handling ------------------------------------------------------ */
 
 /* Stack sizes. */
@@ -63,7 +65,7 @@ static void resizestack(lua_State *L, MSize n)
   lua_assert((MSize)(tvref(L->maxstack)-oldst)==L->stacksize-LJ_STACK_EXTRA-1);
   st = (TValue *)lj_mem_realloc(L, tvref(L->stack),
 				(MSize)(oldsize*sizeof(TValue)),
-				(MSize)(realsize*sizeof(TValue)));
+				(MSize)(realsize*sizeof(TValue)), "stack");
   setmref(L->stack, st);
   delta = (char *)st - (char *)oldst;
   setmref(L->maxstack, st + n);
@@ -124,7 +126,7 @@ void LJ_FASTCALL lj_state_growstack1(lua_State *L)
 /* Allocate basic stack for new state. */
 static void stack_init(lua_State *L1, lua_State *L)
 {
-  TValue *stend, *st = lj_mem_newvec(L, LJ_STACK_START+LJ_STACK_EXTRA, TValue);
+  TValue *stend, *st = lj_mem_newvec(L, LJ_STACK_START+LJ_STACK_EXTRA, TValue, "stack");
   setmref(L1->stack, st);
   L1->stacksize = LJ_STACK_START + LJ_STACK_EXTRA;
   stend = st + L1->stacksize;
@@ -168,9 +170,9 @@ static void close_state(lua_State *L)
 #if LJ_HASFFI
   lj_ctype_freestate(g);
 #endif
-  lj_mem_freevec(g, g->strhash, g->strmask+1, GCRef);
-  lj_buf_free(g, &g->tmpbuf);
-  lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
+  lj_mem_freevec(g, g->strhash, g->strmask+1, GCRef, "strtab");
+  lj_buf_free(g, &g->tmpbuf, "tmpbuf");
+  lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue, "stack");
   lua_assert(g->gc.total == sizeof(GG_State));
 #ifndef LUAJIT_USE_SYSMALLOC
   if (g->allocf == lj_alloc_f)
@@ -178,6 +180,8 @@ static void close_state(lua_State *L)
   else
 #endif
     g->allocf(g->allocd, G2GG(g), sizeof(GG_State), 0);
+  lj_alloc_debug(-(long long)(sizeof(GG_State)), "GG_State");
+
 }
 
 #if LJ_64 && !(defined(LUAJIT_USE_VALGRIND) && defined(LUAJIT_USE_SYSMALLOC))
@@ -215,6 +219,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud)
   setgcref(g->gc.root, obj2gco(L));
   setmref(g->gc.sweep, &g->gc.root);
   g->gc.total = sizeof(GG_State);
+  lj_alloc_debug(sizeof(GG_State), "GG_State");
   g->gc.pause = LUAI_GCPAUSE;
   g->gc.stepmul = LUAI_GCMUL;
   lj_dispatch_init((GG_State *)L);
@@ -271,7 +276,7 @@ LUA_API void lua_close(lua_State *L)
 
 lua_State *lj_state_new(lua_State *L)
 {
-  lua_State *L1 = lj_mem_newobj(L, lua_State);
+  lua_State *L1 = lj_mem_newobj(L, lua_State, "state");
   L1->gct = ~LJ_TTHREAD;
   L1->dummy_ffid = FF_C;
   L1->status = 0;
@@ -294,7 +299,7 @@ void LJ_FASTCALL lj_state_free(global_State *g, lua_State *L)
     setgcrefnull(g->cur_L);
   lj_func_closeuv(L, tvref(L->stack));
   lua_assert(gcref(L->openupval) == NULL);
-  lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
-  lj_mem_freet(g, L);
+  lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue, "stack");
+  lj_mem_freet(g, L, "state");
 }
 

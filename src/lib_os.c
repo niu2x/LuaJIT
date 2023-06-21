@@ -211,7 +211,7 @@ LJLIB_CF(os_date)
       sz += (*q == '%') ? 30 : 1;  /* Overflow doesn't matter. */
     setsbufL(sb, L);
     for (;;) {
-      char *buf = lj_buf_need(sb, sz);
+      char *buf = lj_buf_need(sb, sz, "tmpbuf");
       size_t len = strftime(buf, sbufsz(sb), s, stm);
       if (len) {
 	setstrV(L, L->top++, lj_str_new(L, buf, len));

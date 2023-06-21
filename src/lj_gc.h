@@ -7,6 +7,7 @@
 #define _LJ_GC_H
 
 #include "lj_obj.h"
+#include "lj_alloc_debug.h"
 
 /* Garbage collector states. Order matters. */
 enum {
@@ -107,28 +108,29 @@ static LJ_AINLINE void lj_gc_barrierback(global_State *g, GCtab *t)
       lj_gc_barrierf(G(L), obj2gco(p), obj2gco(o)); }
 
 /* Allocator. */
-LJ_FUNC void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz);
-LJ_FUNC void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size);
+LJ_FUNC void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz, const char *reason);
+LJ_FUNC void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size, const char *reason);
 LJ_FUNC void *lj_mem_grow(lua_State *L, void *p,
-			  MSize *szp, MSize lim, MSize esz);
+			  MSize *szp, MSize lim, MSize esz, const char *reason);
 
-#define lj_mem_new(L, s)	lj_mem_realloc(L, NULL, 0, (s))
+#define lj_mem_new(L, s, reason)	lj_mem_realloc(L, NULL, 0, (s), reason)
 
-static LJ_AINLINE void lj_mem_free(global_State *g, void *p, size_t osize)
+static LJ_AINLINE void lj_mem_free(global_State *g, void *p, size_t osize, const char *reason)
 {
   g->gc.total -= (GCSize)osize;
+  lj_alloc_debug(-((long long)osize), reason);
   g->allocf(g->allocd, p, osize, 0);
 }
 
-#define lj_mem_newvec(L, n, t)	((t *)lj_mem_new(L, (GCSize)((n)*sizeof(t))))
+#define lj_mem_newvec(L, n, t, reason)	((t *)lj_mem_new(L, (GCSize)((n)*sizeof(t)), reason))
 #define lj_mem_reallocvec(L, p, on, n, t) \
   ((p) = (t *)lj_mem_realloc(L, p, (on)*sizeof(t), (GCSize)((n)*sizeof(t))))
-#define lj_mem_growvec(L, p, n, m, t) \
-  ((p) = (t *)lj_mem_grow(L, (p), &(n), (m), (MSize)sizeof(t)))
-#define lj_mem_freevec(g, p, n, t)	lj_mem_free(g, (p), (n)*sizeof(t))
+#define lj_mem_growvec(L, p, n, m, t, reason) \
+  ((p) = (t *)lj_mem_grow(L, (p), &(n), (m), (MSize)sizeof(t), reason))
+#define lj_mem_freevec(g, p, n, t, reason)	lj_mem_free(g, (p), (n)*sizeof(t), reason)
 
-#define lj_mem_newobj(L, t)	((t *)lj_mem_newgco(L, sizeof(t)))
-#define lj_mem_newt(L, s, t)	((t *)lj_mem_new(L, (s)))
-#define lj_mem_freet(g, p)	lj_mem_free(g, (p), sizeof(*(p)))
+#define lj_mem_newobj(L, t, reason)	((t *)lj_mem_newgco(L, sizeof(t), reason))
+#define lj_mem_newt(L, s, t, reason)	((t *)lj_mem_new(L, (s), reason))
+#define lj_mem_freet(g, p, reason)	lj_mem_free(g, (p), sizeof(*(p)), reason)
 
 #endif

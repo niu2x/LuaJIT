@@ -345,7 +345,7 @@ LUA_API void luaJIT_profile_stop(lua_State *L)
     G2J(g)->prof_mode = 0;
     lj_trace_flushall(L);
 #endif
-    lj_buf_free(g, &ps->sb);
+    lj_buf_free(g, &ps->sb, "profile");
     setmref(ps->sb.b, NULL);
     setmref(ps->sb.e, NULL);
     ps->g = NULL;
@@ -360,7 +360,7 @@ LUA_API const char *luaJIT_profile_dumpstack(lua_State *L, const char *fmt,
   SBuf *sb = &ps->sb;
   setsbufL(sb, L);
   lj_buf_reset(sb);
-  lj_debug_dumpstack(L, sb, fmt, depth);
+  lj_debug_dumpstack(L, sb, fmt, depth, "profile");
   *len = (size_t)sbuflen(sb);
   return sbufB(sb);
 }

@@ -137,7 +137,7 @@ LJLIB_CF(table_concat)		LJLIB_REC(.)
   int32_t e = (L->base+3 < L->top && !tvisnil(L->base+3)) ?
 	      lj_lib_checkint(L, 4) : (int32_t)lj_tab_len(t);
   SBuf *sb = lj_buf_tmp_(L);
-  SBuf *sbx = lj_buf_puttab(sb, t, sep, i, e);
+  SBuf *sbx = lj_buf_puttab(sb, t, sep, i, e, "tmpbuf");
   if (LJ_UNLIKELY(!sbx)) {  /* Error: bad element type. */
     int32_t idx = (int32_t)(intptr_t)sbufP(sb);
     cTValue *o = lj_tab_getint(t, idx);

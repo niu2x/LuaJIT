@@ -642,7 +642,7 @@ LJFOLDF(bufput_kfold_rep)
     IRIns *irc = IR(fleft->op1);
     if (irref_isk(irc->op2)) {
       SBuf *sb = lj_buf_tmp_(J->L);
-      sb = lj_buf_putstr_rep(sb, ir_kstr(IR(irc->op2)), IR(fleft->op2)->i);
+      sb = lj_buf_putstr_rep(sb, ir_kstr(IR(irc->op2)), IR(fleft->op2)->i, "tmpbuf");
       fins->o = IR_BUFPUT;
       fins->op1 = irc->op1;
       fins->op2 = lj_ir_kstr(J, lj_buf_tostr(sb));
@@ -668,13 +668,13 @@ LJFOLDF(bufput_kfold_fmt)
     SBuf *sb = lj_buf_tmp_(J->L);
     switch (fins->op2) {
     case IRCALL_lj_strfmt_putfxint:
-      sb = lj_strfmt_putfxint(sb, sf, ir_k64(ira)->u64);
+      sb = lj_strfmt_putfxint(sb, sf, ir_k64(ira)->u64, "tmpbuf");
       break;
     case IRCALL_lj_strfmt_putfstr:
-      sb = lj_strfmt_putfstr(sb, sf, ir_kstr(ira));
+      sb = lj_strfmt_putfstr(sb, sf, ir_kstr(ira), "tmpbuf");
       break;
     case IRCALL_lj_strfmt_putfchar:
-      sb = lj_strfmt_putfchar(sb, sf, ira->i);
+      sb = lj_strfmt_putfchar(sb, sf, ira->i, "tmpbuf");
       break;
     case IRCALL_lj_strfmt_putfnum_int:
     case IRCALL_lj_strfmt_putfnum_uint:

@@ -42,7 +42,7 @@ LJ_FUNC int lj_debug_getinfo(lua_State *L, const char *what, lj_Debug *ar,
 			     int ext);
 #if LJ_HASPROFILE
 LJ_FUNC void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt,
-				int depth);
+				int depth, const char * reason);
 #endif
 
 /* Fixed internal variable names. */
