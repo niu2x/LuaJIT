@@ -842,6 +842,41 @@ static void lj_dump_single_gco(global_State *g, GCobj *o, int deep, const char *
       lj_dump_single_gco(g, obj2gco(tabref(th->env)), deep+2, "env");
 
     }
+    else if(gct == ~LJ_TPROTO) {
+      GCproto *pt = gco2pt(o);
+      printf("Proto[%p, firstline: %d]\n", pt, pt->firstline);
+
+      lj_dump_single_gco(g, obj2gco(proto_chunkname(pt)), deep+2, "chunkname");
+
+      ptrdiff_t i;
+      for (i = -(ptrdiff_t)pt->sizekgc; i < 0; i++) {
+        lj_dump_single_gco(g, proto_kgc(pt, i), deep+2, "kgc");
+      }
+
+    }
+    else if(gct == ~LJ_TFUNC) {
+      GCfunc * fn = gco2func(o);
+      printf("Func[%p]\n", fn);
+      lj_dump_single_gco(g, obj2gco(tabref(fn->c.env)), deep+2, "env");
+
+      if (isluafunc(fn)) {
+        lj_dump_single_gco(g, obj2gco(funcproto(fn)), deep+2, "proto");
+        uint32_t i;
+        for (i = 0; i < fn->l.nupvalues; i++)  /* Mark Lua function upvalues. */
+          lj_dump_single_gco(g, obj2gco(&gcref(fn->l.uvptr[i])->uv), deep+2, "uv");
+      } else {
+        uint32_t i;
+        for (i = 0; i < fn->c.nupvalues; i++) {
+          if(tvisgcv(&fn->c.upvalue[i])){
+            lj_dump_single_gco(g, gcV(&fn->c.upvalue[i]), deep+2, "uv");
+          }
+          else {
+            lj_dump_single_gco(g, NULL, deep+2, "uv");
+          }
+        }
+      }
+
+    }
     else {
       printf("TODO[%p]\n", o);
     }
