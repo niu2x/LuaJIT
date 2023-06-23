@@ -6,9 +6,10 @@
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 */
 
+#include <stdio.h>
+
 #define lj_gc_c
 #define LUA_CORE
-
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_err.h"
@@ -717,6 +718,20 @@ int LJ_FASTCALL lj_gc_step_jit(global_State *g, MSize steps)
 }
 #endif
 
+static void lj_gc_dump(global_State *g) {
+  MSize i, strmask;
+  strmask = g->strmask;
+  for (i = 0; i <= strmask; i++){  /* Free all string hash chains. */
+    GCRef *p = & g->strhash[i];
+    GCobj *o;
+    while ((o = gcref(*p)) != NULL ) {
+      GCstr *str = gco2str(o);
+      printf("STR[%p, fixed: %d]: (%d) %s\n", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len, strdata(str));
+      p = &o->gch.nextgc;
+    }
+  }
+}
+
 /* Perform a full GC cycle. */
 void lj_gc_fullgc(lua_State *L)
 {
@@ -739,6 +754,8 @@ void lj_gc_fullgc(lua_State *L)
   do { gc_onestep(L); } while (g->gc.state != GCSpause);
   g->gc.threshold = (g->gc.estimate/100) * g->gc.pause;
   g->vmstate = ostate;
+
+  lj_gc_dump(g);
 }
 
 /* -- Write barriers ------------------------------------------------------ */
