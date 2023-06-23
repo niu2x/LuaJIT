@@ -718,6 +718,160 @@ int LJ_FASTCALL lj_gc_step_jit(global_State *g, MSize steps)
 }
 #endif
 
+
+
+#define lj_gc_dumptv(g, tv, prefix) \
+{  if(tvisgcv(tv)) lj_dump_gco(g, gcV(tv), prefix); }
+
+/* Mark a GCobj (if needed). */
+#define lj_gc_dumpobj(g, o, prefix) \
+  {lj_dump_gco(g, obj2gco(o), prefix); }
+
+static void array_append(void ***array, int *alloc, int *nr, void *data) {
+  if(*nr == *alloc) {
+    void ** new_array = malloc(sizeof(void *) * (*alloc * 2+1) );
+    if(*alloc != 0) {
+      memcpy(new_array, *array, sizeof(void *) * (*nr));
+      free(*array);
+    }
+    *array = new_array;
+    *alloc = *alloc * 2+1;
+  }
+
+  (*array) [ (*nr) ++ ] = data;
+}
+
+static int array_exist(void **array, int nr, void *data) {
+  int i;
+  for(i = 0; i < nr; i ++)
+    if(array[i] == data)
+      return 1;
+  return 0;
+}
+
+static void array_free(void ***array, int *alloc, int *nr) {
+  if(*alloc != 0){
+    free(*array);
+    *array = NULL;
+    *alloc = *nr = 0;
+  }
+}
+
+static void **visited = NULL;
+static int alloc = 0;
+static int nr = 0;
+
+static void print_space(int deep, const char *prefix) {
+  int i;
+  if(prefix[0] != 0){
+    for(i = 0; i < deep; i ++) putchar(' ');
+    printf("%s: \n", prefix);
+  }
+
+  for(i = 0; i < deep; i ++) putchar(' ');
+}
+
+static void lj_dump_single_gco(global_State *g, GCobj *o, int deep, const char *prefix) {
+
+  print_space(deep, prefix);
+  if(!o) {
+    printf("Non-gc obj\n");
+    return;
+  }
+
+  if(!array_exist(visited, nr, o)) {
+    array_append(&visited, &alloc, &nr, o);
+    int gct = o->gch.gct;
+    if (gct == ~LJ_TTAB) {
+      GCtab *t = gco2tab(o);
+      printf("TAB[%p]\n", t);        
+      GCtab *mt = tabref(t->metatable);
+      if (mt)
+        lj_dump_single_gco(g, obj2gco(mt), deep + 2, "metatable");
+
+      MSize i, asize = t->asize;
+      for (i = 0; i < asize; i++){
+        if(tvisgcv(arrayslot(t, i)))
+          lj_dump_single_gco(g, gcV(arrayslot(t, i)), deep + 2, "array_part");
+      }
+
+      if (t->hmask > 0) {  /* Mark hash part. */
+        Node *node = noderef(t->node);
+        MSize i, hmask = t->hmask;
+        for (i = 0; i <= hmask; i++) {
+          Node *n = &node[i];
+          if (!tvisnil(&n->val)) {  /* Mark non-empty slot. */
+            if(tvisgcv(&n->key)){
+              lj_dump_single_gco(g, gcV(&n->key), deep+2, "hashpart_key");
+            }
+            else{
+              lj_dump_single_gco(g, NULL, deep+2, "hashpart_key");
+            }
+            if(tvisgcv(&n->val)){
+              lj_dump_single_gco(g, gcV(&n->val), deep+2, "hashpart_value");
+            }
+            else{
+              lj_dump_single_gco(g, NULL, deep+2, "hashpart_value");
+            }
+          }
+        }
+      }
+    } 
+    else if( gct == ~LJ_TSTR) {
+      GCstr *str = gco2str(o);
+      printf("STR[%p, fixed: %d]: (%d) %s\n", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len, strdata(str));
+    }
+    else if(gct == ~LJ_TUPVAL) {
+      GCupval *uv = gco2uv(o);
+      printf("UV[%p]\n", uv);
+      if(tvisgcv(uvval(uv))){
+        lj_dump_single_gco(g, gcV(uvval(uv)), deep+2, "uv_content");
+      }
+      else {
+        lj_dump_single_gco(g, NULL, deep+2, "uv_content");
+      }
+    }
+    else if(gct == ~LJ_TTHREAD) {
+      lua_State *th = gco2th(o);
+      printf("Thread[%p]\n", th);
+      TValue *slot, *top = th->top;
+      for (slot = tvref(th->stack)+1+LJ_FR2; slot < top; slot++){
+        if(tvisgcv(slot))
+          lj_dump_single_gco(g, gcV(slot), deep+2, "stack");
+      }
+      lj_dump_single_gco(g, obj2gco(tabref(th->env)), deep+2, "env");
+
+    }
+    else {
+      printf("TODO[%p]\n", o);
+    }
+  }
+  else {
+    printf("already dump[%p]\n", o);
+  }
+
+}
+
+static void lj_dump_gco(global_State *g, GCobj *o, const char *prefix) {
+  while(o) {
+    lj_dump_single_gco(g, o, 0, prefix);
+    o = gcref( o->gch.nextgc);
+  } 
+
+}
+
+static void lj_gc_dump_gcroot(global_State *g)
+{
+  ptrdiff_t i;
+  char prefix[] = "gcroot_00000";
+  for (i = 0; i < GCROOT_MAX; i++)
+    if (gcref(g->gcroot[i]) != NULL){
+      sprintf(prefix, "gc_root_%ld", i);
+      lj_gc_dumpobj(g, gcref(g->gcroot[i]), prefix);
+    }
+}
+
+
 static void lj_gc_dump(global_State *g) {
   MSize i, strmask;
   strmask = g->strmask;
@@ -730,6 +884,16 @@ static void lj_gc_dump(global_State *g) {
       p = &o->gch.nextgc;
     }
   }
+
+
+  array_free(&visited, &alloc, &nr);
+
+  lj_dump_single_gco(g, obj2gco(mainthread(g)), 0, "mainthread");
+  lj_dump_single_gco(g, obj2gco(tabref(mainthread(g)->env)), 0, "mainthread_env");
+  lj_dump_single_gco(g, gcV(&g->registrytv), 0, "registrytv");
+  lj_gc_dump_gcroot(g);
+
+
 }
 
 /* Perform a full GC cycle. */
