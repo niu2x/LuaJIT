@@ -915,6 +915,7 @@ static void lj_gc_dump_gcroot(global_State *g)
 
 
 static void lj_gc_dump(global_State *g) {
+  printf("lj_gc_dump: total %lu\n", g->gc.total);
   MSize i, strmask;
   strmask = g->strmask;
   for (i = 0; i <= strmask; i++){  /* Free all string hash chains. */
