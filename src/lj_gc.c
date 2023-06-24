@@ -943,6 +943,7 @@ static void _lj_gc_dump(global_State *g, const char *path) {
 }
 
 void lj_gc_dump(lua_State *L, const char *path) {
+  lj_gc_fullgc(L);
   _lj_gc_dump(G(L), path);
 }
 
