@@ -875,7 +875,14 @@ static void lj_dump_single_gco(global_State *g, GCobj *o, int deep, const char *
           }
         }
       }
-
+    }
+    else if(gct == ~LJ_TUDATA) {
+      GCudata *ud = gco2ud(o);
+      printf("udata[%p]\n", ud);
+      GCtab *mt = tabref(ud->metatable);
+      if(mt) {
+        lj_dump_single_gco(g, obj2gco(mt), deep+2, "meta");
+      }
     }
     else {
       printf("TODO[%p]\n", o);
