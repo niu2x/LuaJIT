@@ -435,11 +435,15 @@ LJLIB_CF(gcinfo)
 LJLIB_CF(collectgarbage)
 {
   int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  /* ORDER LUA_GC* */
-    "\4stop\7restart\7collect\5count\1\377\4step\10setpause\12setstepmul\1\377\11isrunning");
-  int32_t data = lj_lib_optint(L, 2, 0);
-  if (opt == LUA_GCCOUNT) {
+    "\4stop\7restart\7collect\5count\1\377\4step\10setpause\12setstepmul\1\377\11isrunning\4dump");
+  if(opt == LUA_GCDUMP) {
+    lj_gc_dump(L, strdata(lj_lib_checkstr(L, 2)));
+    return 0;
+  }
+  else if (opt == LUA_GCCOUNT) {
     setnumV(L->top, (lua_Number)G(L)->gc.total/1024.0);
   } else {
+    int32_t data = lj_lib_optint(L, 2, 0);
     int res = lua_gc(L, opt, data);
     if (opt == LUA_GCSTEP || opt == LUA_GCISRUNNING)
       setboolV(L->top, res);

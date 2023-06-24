@@ -720,12 +720,12 @@ int LJ_FASTCALL lj_gc_step_jit(global_State *g, MSize steps)
 
 
 
-#define lj_gc_dumptv(g, tv, prefix) \
-{  if(tvisgcv(tv)) lj_dump_gco(g, gcV(tv), prefix); }
+#define lj_gc_dumptv(g, fp, tv, prefix) \
+{  if(tvisgcv(tv)) lj_dump_gco(g, fp, gcV(tv), prefix); }
 
 /* Mark a GCobj (if needed). */
-#define lj_gc_dumpobj(g, o, prefix) \
-  {lj_dump_gco(g, obj2gco(o), prefix); }
+#define lj_gc_dumpobj(g, fp, o, prefix) \
+  {lj_dump_gco(g, fp, obj2gco(o), prefix); }
 
 static void array_append(void ***array, int *alloc, int *nr, void *data) {
   if(*nr == *alloc) {
@@ -761,21 +761,21 @@ static void **visited = NULL;
 static int alloc = 0;
 static int nr = 0;
 
-static void print_space(int deep, const char *prefix) {
+static void print_space(FILE *fp, int deep, const char *prefix) {
   int i;
   if(prefix[0] != 0){
-    for(i = 0; i < deep; i ++) putchar(' ');
-    printf("%s: \n", prefix);
+    for(i = 0; i < deep; i ++) fputc(' ', fp);
+    fprintf(fp, "%s: \n", prefix);
   }
 
-  for(i = 0; i < deep; i ++) putchar(' ');
+  for(i = 0; i < deep; i ++) fputc(' ', fp);
 }
 
-static void lj_dump_single_gco(global_State *g, GCobj *o, int deep, const char *prefix) {
+static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, const char *prefix) {
 
-  print_space(deep, prefix);
+  print_space(fp, deep, prefix);
   if(!o) {
-    printf("Non-gc obj\n");
+    fprintf(fp, "Non-gc obj\n");
     return;
   }
 
@@ -784,15 +784,15 @@ static void lj_dump_single_gco(global_State *g, GCobj *o, int deep, const char *
     int gct = o->gch.gct;
     if (gct == ~LJ_TTAB) {
       GCtab *t = gco2tab(o);
-      printf("TAB[%p]\n", t);        
+      fprintf(fp, "TAB[%p]\n", t);        
       GCtab *mt = tabref(t->metatable);
       if (mt)
-        lj_dump_single_gco(g, obj2gco(mt), deep + 2, "metatable");
+        lj_dump_single_gco(g, fp, obj2gco(mt), deep + 2, "metatable");
 
       MSize i, asize = t->asize;
       for (i = 0; i < asize; i++){
         if(tvisgcv(arrayslot(t, i)))
-          lj_dump_single_gco(g, gcV(arrayslot(t, i)), deep + 2, "array_part");
+          lj_dump_single_gco(g, fp, gcV(arrayslot(t, i)), deep + 2, "array_part");
       }
 
       if (t->hmask > 0) {  /* Mark hash part. */
@@ -802,16 +802,16 @@ static void lj_dump_single_gco(global_State *g, GCobj *o, int deep, const char *
           Node *n = &node[i];
           if (!tvisnil(&n->val)) {  /* Mark non-empty slot. */
             if(tvisgcv(&n->key)){
-              lj_dump_single_gco(g, gcV(&n->key), deep+2, "hashpart_key");
+              lj_dump_single_gco(g, fp, gcV(&n->key), deep+2, "hashpart_key");
             }
             else{
-              lj_dump_single_gco(g, NULL, deep+2, "hashpart_key");
+              lj_dump_single_gco(g, fp, NULL, deep+2, "hashpart_key");
             }
             if(tvisgcv(&n->val)){
-              lj_dump_single_gco(g, gcV(&n->val), deep+2, "hashpart_value");
+              lj_dump_single_gco(g, fp, gcV(&n->val), deep+2, "hashpart_value");
             }
             else{
-              lj_dump_single_gco(g, NULL, deep+2, "hashpart_value");
+              lj_dump_single_gco(g, fp, NULL, deep+2, "hashpart_value");
             }
           }
         }
@@ -819,103 +819,106 @@ static void lj_dump_single_gco(global_State *g, GCobj *o, int deep, const char *
     } 
     else if( gct == ~LJ_TSTR) {
       GCstr *str = gco2str(o);
-      printf("STR[%p, fixed: %d]: (%d) %s\n", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len, strdata(str));
+      fprintf(fp, "STR[%p, fixed: %d]: (%d) %s\n", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len, strdata(str));
     }
     else if(gct == ~LJ_TUPVAL) {
       GCupval *uv = gco2uv(o);
-      printf("UV[%p]\n", uv);
+      fprintf(fp, "UV[%p]\n", uv);
       if(tvisgcv(uvval(uv))){
-        lj_dump_single_gco(g, gcV(uvval(uv)), deep+2, "uv_content");
+        lj_dump_single_gco(g, fp, gcV(uvval(uv)), deep+2, "uv_content");
       }
       else {
-        lj_dump_single_gco(g, NULL, deep+2, "uv_content");
+        lj_dump_single_gco(g, fp, NULL, deep+2, "uv_content");
       }
     }
     else if(gct == ~LJ_TTHREAD) {
       lua_State *th = gco2th(o);
-      printf("Thread[%p]\n", th);
+      fprintf(fp, "Thread[%p]\n", th);
       TValue *slot, *top = th->top;
       for (slot = tvref(th->stack)+1+LJ_FR2; slot < top; slot++){
         if(tvisgcv(slot))
-          lj_dump_single_gco(g, gcV(slot), deep+2, "stack");
+          lj_dump_single_gco(g, fp, gcV(slot), deep+2, "stack");
       }
-      lj_dump_single_gco(g, obj2gco(tabref(th->env)), deep+2, "env");
+      lj_dump_single_gco(g, fp, obj2gco(tabref(th->env)), deep+2, "env");
 
     }
     else if(gct == ~LJ_TPROTO) {
       GCproto *pt = gco2pt(o);
-      printf("Proto[%p, firstline: %d]\n", pt, pt->firstline);
+      fprintf(fp, "Proto[%p, firstline: %d]\n", pt, pt->firstline);
 
-      lj_dump_single_gco(g, obj2gco(proto_chunkname(pt)), deep+2, "chunkname");
+      lj_dump_single_gco(g, fp, obj2gco(proto_chunkname(pt)), deep+2, "chunkname");
 
       ptrdiff_t i;
       for (i = -(ptrdiff_t)pt->sizekgc; i < 0; i++) {
-        lj_dump_single_gco(g, proto_kgc(pt, i), deep+2, "kgc");
+        lj_dump_single_gco(g, fp, proto_kgc(pt, i), deep+2, "kgc");
       }
 
     }
     else if(gct == ~LJ_TFUNC) {
       GCfunc * fn = gco2func(o);
-      printf("Func[%p]\n", fn);
-      lj_dump_single_gco(g, obj2gco(tabref(fn->c.env)), deep+2, "env");
+      fprintf(fp, "Func[%p]\n", fn);
+      lj_dump_single_gco(g, fp, obj2gco(tabref(fn->c.env)), deep+2, "env");
 
       if (isluafunc(fn)) {
-        lj_dump_single_gco(g, obj2gco(funcproto(fn)), deep+2, "proto");
+        lj_dump_single_gco(g, fp, obj2gco(funcproto(fn)), deep+2, "proto");
         uint32_t i;
         for (i = 0; i < fn->l.nupvalues; i++)  /* Mark Lua function upvalues. */
-          lj_dump_single_gco(g, obj2gco(&gcref(fn->l.uvptr[i])->uv), deep+2, "uv");
+          lj_dump_single_gco(g, fp, obj2gco(&gcref(fn->l.uvptr[i])->uv), deep+2, "uv");
       } else {
         uint32_t i;
         for (i = 0; i < fn->c.nupvalues; i++) {
           if(tvisgcv(&fn->c.upvalue[i])){
-            lj_dump_single_gco(g, gcV(&fn->c.upvalue[i]), deep+2, "uv");
+            lj_dump_single_gco(g, fp, gcV(&fn->c.upvalue[i]), deep+2, "uv");
           }
           else {
-            lj_dump_single_gco(g, NULL, deep+2, "uv");
+            lj_dump_single_gco(g, fp, NULL, deep+2, "uv");
           }
         }
       }
     }
     else if(gct == ~LJ_TUDATA) {
       GCudata *ud = gco2ud(o);
-      printf("udata[%p]\n", ud);
+      fprintf(fp, "udata[%p]\n", ud);
       GCtab *mt = tabref(ud->metatable);
       if(mt) {
-        lj_dump_single_gco(g, obj2gco(mt), deep+2, "meta");
+        lj_dump_single_gco(g, fp, obj2gco(mt), deep+2, "meta");
       }
     }
     else {
-      printf("TODO[%p]\n", o);
+      fprintf(fp, "TODO[%p]\n", o);
     }
   }
   else {
-    printf("already dump[%p]\n", o);
+    fprintf(fp, "already dump[%p]\n", o);
   }
 
 }
 
-static void lj_dump_gco(global_State *g, GCobj *o, const char *prefix) {
+static void lj_dump_gco(global_State *g, FILE *fp,  GCobj *o, const char *prefix) {
   while(o) {
-    lj_dump_single_gco(g, o, 0, prefix);
+    lj_dump_single_gco(g, fp, o, 0, prefix);
     o = gcref( o->gch.nextgc);
   } 
 
 }
 
-static void lj_gc_dump_gcroot(global_State *g)
+static void lj_gc_dump_gcroot(global_State *g, FILE *fp)
 {
   ptrdiff_t i;
   char prefix[] = "gcroot_00000";
   for (i = 0; i < GCROOT_MAX; i++)
     if (gcref(g->gcroot[i]) != NULL){
       sprintf(prefix, "gc_root_%ld", i);
-      lj_gc_dumpobj(g, gcref(g->gcroot[i]), prefix);
+      lj_gc_dumpobj(g, fp, gcref(g->gcroot[i]), prefix);
     }
 }
 
 
-static void lj_gc_dump(global_State *g) {
-  printf("lj_gc_dump: total %u\n", g->gc.total);
+static void _lj_gc_dump(global_State *g, const char *path) {
+
+  FILE * fp = fopen(path, "w");
+
+  fprintf(fp, "lj_gc_dump: total %u\n", g->gc.total);
   MSize i, strmask;
   strmask = g->strmask;
   for (i = 0; i <= strmask; i++){  /* Free all string hash chains. */
@@ -923,7 +926,7 @@ static void lj_gc_dump(global_State *g) {
     GCobj *o;
     while ((o = gcref(*p)) != NULL ) {
       GCstr *str = gco2str(o);
-      printf("STR[%p, fixed: %d]: (%d) %s\n", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len, strdata(str));
+      fprintf(fp, "STR[%p, fixed: %d]: (%d) %s\n", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len, strdata(str));
       p = &o->gch.nextgc;
     }
   }
@@ -931,12 +934,16 @@ static void lj_gc_dump(global_State *g) {
 
   array_free(&visited, &alloc, &nr);
 
-  lj_dump_single_gco(g, obj2gco(mainthread(g)), 0, "mainthread");
-  lj_dump_single_gco(g, obj2gco(tabref(mainthread(g)->env)), 0, "mainthread_env");
-  lj_dump_single_gco(g, gcV(&g->registrytv), 0, "registrytv");
-  lj_gc_dump_gcroot(g);
+  lj_dump_single_gco(g, fp, obj2gco(mainthread(g)), 0, "mainthread");
+  lj_dump_single_gco(g, fp, obj2gco(tabref(mainthread(g)->env)), 0, "mainthread_env");
+  lj_dump_single_gco(g, fp, gcV(&g->registrytv), 0, "registrytv");
+  lj_gc_dump_gcroot(g, fp);
 
+  fclose(fp);
+}
 
+void lj_gc_dump(lua_State *L, const char *path) {
+  _lj_gc_dump(G(L), path);
 }
 
 /* Perform a full GC cycle. */
@@ -962,7 +969,6 @@ void lj_gc_fullgc(lua_State *L)
   g->gc.threshold = (g->gc.estimate/100) * g->gc.pause;
   g->vmstate = ostate;
 
-  lj_gc_dump(g);
 }
 
 /* -- Write barriers ------------------------------------------------------ */
