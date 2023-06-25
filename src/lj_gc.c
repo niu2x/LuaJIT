@@ -916,7 +916,7 @@ static void lj_gc_dump_gcroot(global_State *g, FILE *fp)
 
 static void _lj_gc_dump(global_State *g, const char *path) {
 
-  FILE * fp = fopen(path, "w");
+  FILE * fp = fopen(path, "wb");
 
   fprintf(fp, "lj_gc_dump: total %u\n", g->gc.total);
   MSize i, strmask;
@@ -926,7 +926,9 @@ static void _lj_gc_dump(global_State *g, const char *path) {
     GCobj *o;
     while ((o = gcref(*p)) != NULL ) {
       GCstr *str = gco2str(o);
-      fprintf(fp, "STR[%p, fixed: %d]: (%d) %s\n", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len, strdata(str));
+      fprintf(fp, "STR[%p, fixed: %d]: (%d) ", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len);
+      fwrite(strdata(str), 1, str->len, fp);
+      fprintf(fp, "\n");
       p = &o->gch.nextgc;
     }
   }
