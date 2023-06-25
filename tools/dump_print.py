@@ -4,6 +4,7 @@ import argparse
 import datetime
 import time
 import pickle
+from collections import deque
 
 def die(err):
     print(err)
@@ -254,27 +255,102 @@ class Lexer:
             obj = self.objs[addr]
             print(obj['type'], addr, self.str_obj(addr))
 
-    def why_alive(self, addr):
-        addr = addr.encode('utf-8')
+    def why_alive(self, target_addr):
+        target_addr = target_addr.encode('utf-8')
         visited = {}
-        path = self.search(self.mainthread, addr, ['mainthread'], visited)
-        if path:
-            return path
+        to_visit = deque()
 
-        path = self.search(self.mainthread_env, addr, ['mainthread_env'], visited)
-        if path:
-            return path
-
-        path = self.search(self.registrytv, addr, ['registrytv'], visited)
-        if path:
-            return path
-
+        to_visit.append(self.mainthread)
+        to_visit.append(self.mainthread_env)
+        to_visit.append(self.registrytv)
         for v in self.gc_root:
-            path = self.search(v, addr, ['gc_root'], visited)
-            if path:
-                return path
+            to_visit.append(v)
 
-        return []
+        path = {}
+
+        def format_path(addr):
+            result = [addr]
+            while addr in path:
+                parent = path[addr]
+                addr = parent[0]
+                result.append(parent[1])
+            result.reverse()
+            return '->\n'.join(result) 
+            # return addr
+
+
+        def add_to_visit(addr, parent):
+            if addr not in visited:
+                to_visit.append(addr)
+                path[addr] = parent
+            visited[addr] = True
+
+        while len(to_visit) > 0:
+            obj_addr = to_visit.popleft()
+
+            if obj_addr == target_addr:
+                return format_path(target_addr)
+
+            if obj_addr == 'Non-gc':
+                continue
+
+            obj = self.objs[obj_addr]
+
+            if obj['type'] == 'Thread':
+                for s in obj['stack']:
+                    add_to_visit(s, (obj_addr, 'Thread[STACK]'))
+                s = obj['env']
+                add_to_visit(s, (obj_addr, 'Thread[ENV]'))
+                
+            elif obj['type'] == 'UV':
+                s = obj['content']
+                add_to_visit(s, (obj_addr, 'UV[content]'))
+
+            elif obj['type'] == 'Lua-Func' or obj['type'] == 'C-Func' :
+                s = obj['env']
+                add_to_visit(s, (obj_addr, obj['type'] + '[env]'))
+
+                if obj['type'] == 'Lua-Func':
+                    s = obj['proto']
+                    add_to_visit(s, (obj_addr, 'Func[proto]'))
+
+                for s in obj['uv']:
+                    add_to_visit(s, (obj_addr, 'Func[uv]'))
+
+
+            elif obj['type'] == 'Tab':
+                for s in obj['arraypart']:
+                    add_to_visit(s, (obj_addr, 'Tab[arraypart]'))
+
+                for k in obj['hashpart']:
+                    v = obj['hashpart'][k]
+                    key_str = self.str_obj(k)
+                    add_to_visit(k, (obj_addr, f'Tab[hashpart KEY:{key_str} key]'))
+                    add_to_visit(v, (obj_addr, f'Tab[hashpart KEY:{key_str} value]'))
+
+                if 'meta' in obj:
+                    s = obj['meta']
+                    add_to_visit(v, (obj_addr, 'Tab[meta]'))
+
+
+            elif obj['type'] == 'Proto':
+                for s in obj['kgc']:
+                    add_to_visit(s, (obj_addr, 'Proto[kgc]'))
+
+                s = obj['chunkname']
+                add_to_visit(s, (obj_addr, 'Proto[chunkname]'))
+
+            elif obj['type'] == 'udata':
+                if 'meta' in obj:
+                    s = obj['meta']
+                    add_to_visit(s, (obj_addr, 'udata[meta]'))
+
+            elif obj['type'] == 'STR':
+                pass
+            else:
+                assert False, f"unsupport type: {obj['type']}"
+
+        return 'not found'
 
     def str_obj(self, addr):
         if addr == 'Non-gc':
@@ -294,103 +370,6 @@ class Lexer:
             return f'Lua-Func[{self.str_obj(proto)}]'
         else:
             return obj['type'] + '[]'
-
-    def search(self, obj_addr, addr, parent_path, visited):
-        if obj_addr in visited:
-            return 
-
-        if obj_addr == 'Non-gc':
-            return
-
-        visited[obj_addr] = True
-
-        if obj_addr == addr:
-            return parent_path
-
-        obj = self.objs[obj_addr]
-
-        if obj['type'] == 'Thread':
-            for s in obj['stack']:
-                path = self.search(s, addr, parent_path + ['Thread[STACK]'], visited)
-                if path:
-                    return path
-            s = obj['env']
-            path = self.search(s, addr, parent_path + ['Thread[ENV]'], visited)
-            if path:
-                return path
-        elif obj['type'] == 'UV':
-            s = obj['content']
-            path = self.search(s, addr, parent_path + ['UV[content]'], visited)
-            if path:
-                return path
-        elif obj['type'] == 'Lua-Func' or obj['type'] == 'C-Func' :
-            s = obj['env']
-            path = self.search(s, addr, parent_path + [obj['type'] + '[env]'], visited)
-            if path:
-                return path
-
-            if obj['type'] == 'Lua-Func':
-                s = obj['proto']
-                path = self.search(s, addr, parent_path + ['Func[proto]'], visited)
-                if path:
-                    return path
-
-            for s in obj['uv']:
-                path = self.search(s, addr, parent_path + ['Func[uv]'], visited)
-                if path:
-                    return path
-
-        elif obj['type'] == 'Tab':
-            for s in obj['arraypart']:
-                path = self.search(s, addr, parent_path + ['Tab[arraypart]'], visited)
-                if path:
-                    return path
-
-            for k in obj['hashpart']:
-                v = obj['hashpart'][k]
-
-
-                key_str = self.str_obj(k)
-
-                path = self.search(k, addr, parent_path + [f'Tab[hashpart KEY:{key_str} key]'], visited)
-                if path:
-                    return path
-
-                path = self.search(v, addr, parent_path + [f'Tab[hashpart KEY:{key_str} value]'], visited)
-                if path:
-                    return path
-
-            if 'meta' in obj:
-                s = obj['meta']
-                path = self.search(s, addr, parent_path + ['Tab[meta]'], visited)
-                if path:
-                    return path
-
-
-        elif obj['type'] == 'Proto':
-            for s in obj['kgc']:
-                path = self.search(s, addr, parent_path + ['Proto[kgc]'], visited)
-                if path:
-                    return path
-
-
-            s = obj['chunkname']
-            path = self.search(s, addr, parent_path + ['Proto[chunkname]'], visited)
-            if path:
-                return path
-
-        elif obj['type'] == 'udata':
-            if 'meta' in obj:
-                s = obj['meta']
-                path = self.search(s, addr, parent_path + ['udata[meta]'], visited)
-                if path:
-                    return path
-
-        elif obj['type'] == 'STR':
-            pass
-
-        else:
-            assert False, f"unsupport type: {obj['type']}"
 
 
 def subcommand_cache(args):
@@ -412,7 +391,7 @@ def subcommand_show(args):
 def subcommand_why_alive(args):
     lexer = Lexer(None)
     lexer.load(args.cache)
-    print('->\n'.join(lexer.why_alive(args.addr)))
+    print(lexer.why_alive(args.addr))
 
 def parse_args():
     parser = argparse.ArgumentParser(description="")
