@@ -723,10 +723,6 @@ int LJ_FASTCALL lj_gc_step_jit(global_State *g, MSize steps)
 #define lj_gc_dumptv(g, fp, tv, prefix) \
 {  if(tvisgcv(tv)) lj_dump_gco(g, fp, gcV(tv), prefix); }
 
-/* Mark a GCobj (if needed). */
-#define lj_gc_dumpobj(g, fp, o, prefix) \
-  {lj_dump_gco(g, fp, obj2gco(o), prefix); }
-
 static void array_append(void ***array, int *alloc, int *nr, void *data) {
   if(*nr == *alloc) {
     void ** new_array = malloc(sizeof(void *) * (*alloc * 2+1) );
@@ -909,7 +905,7 @@ static void lj_gc_dump_gcroot(global_State *g, FILE *fp)
   for (i = 0; i < GCROOT_MAX; i++)
     if (gcref(g->gcroot[i]) != NULL){
       sprintf(prefix, "gc_root_%ld", i);
-      lj_gc_dumpobj(g, fp, gcref(g->gcroot[i]), prefix);
+      lj_dump_single_gco(g, fp, gcref(g->gcroot[i]), 0, prefix);
     }
 }
 

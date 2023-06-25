@@ -268,11 +268,18 @@ class Lexer:
         visited[self.mainthread_env] = True
         visited[self.registrytv] = True
 
+        path = {
+            self.mainthread: (None, "mainthread"),
+            self.mainthread_env: (None, "mainthread_env"),
+            self.registrytv: (None, "registrytv"),
+        }
+
         for v in self.gc_root:
             to_visit.append(v)
             visited[v] = True
+            path[v] = (None, "gc_root")
 
-        path = {}
+        
 
         def format_path(addr):
             result = [addr.decode('utf-8')]
@@ -336,7 +343,7 @@ class Lexer:
 
                 if 'meta' in obj:
                     s = obj['meta']
-                    add_to_visit(v, (obj_addr, 'Tab[meta]'))
+                    add_to_visit(s, (obj_addr, 'Tab[meta]'))
 
 
             elif obj['type'] == 'Proto':
