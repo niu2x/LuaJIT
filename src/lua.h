@@ -226,7 +226,8 @@ LUA_API int  (lua_status) (lua_State *L);
 #define LUA_GCSTEP		5
 #define LUA_GCSETPAUSE		6
 #define LUA_GCSETSTEPMUL	7
-#define LUA_GCISRUNNING		9
+#define LUA_GCISRUNNING   9
+#define LUA_GCDUMP		10
 
 LUA_API int (lua_gc) (lua_State *L, int what, int data);
 
@@ -347,6 +348,8 @@ LUA_API void *lua_upvalueid (lua_State *L, int idx, int n);
 LUA_API void lua_upvaluejoin (lua_State *L, int idx1, int n1, int idx2, int n2);
 LUA_API int lua_loadx (lua_State *L, lua_Reader reader, void *dt,
 		       const char *chunkname, const char *mode);
+
+LUA_API void lj_gc_dump(lua_State *L, const char *path);
 
 
 struct lua_Debug {
