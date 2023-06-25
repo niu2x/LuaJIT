@@ -10,6 +10,55 @@ def die(err):
     print(err)
     raise "lexer error"
 
+def tostr(x):
+    if type(x) == type(b''):
+        return x.decode('utf-8')
+    return x
+# class FileBuffer:
+#     def __init__(self, file):
+#         self.file = file
+#         self.buffer = b''
+#         self.buffer_pos = 0
+
+#     def tell(self):
+#         return self.file.tell() - len(self.buffer) + self.buffer_pos
+
+#     def read(self, n):
+#         result = b''
+#         avail = len(self.buffer) - self.buffer_pos
+
+#         if avail == 0:
+#             self.buffer = self.file.read(1024)
+#             self.buffer_pos = 0
+#             avail = len(self.buffer) - self.buffer_pos
+
+#         if avail == 0:
+#             return b''
+
+#         readn = 0
+#         if avail >= n:
+#             readn = n;
+#         else:
+#             readn = avail;
+
+#         result += self.buffer[self.buffer_pos:self.buffer_pos+readn]
+#         self.buffer_pos += readn
+
+#         n -= readn
+
+#         if n > 0:
+#             result += self.read(n)
+#         return result
+
+
+#     def seek(self, n):
+#         if self.file.tell() - len(self.buffer) < n and self.file.tell() > n:
+#             self.buffer_pos = n - (self.file.tell() - len(self.buffer))
+#         else:
+#             self.file.seek(n)
+#             self.buffer = b''
+#             self.buffer_pos = 0
+
 class Lexer: 
     def __init__(self, file):
         self.file = file
@@ -73,16 +122,6 @@ class Lexer:
 
         assert self.file.read(1) == b''
 
-    def read_objs(self, deep):
-        objs = []
-        while True:
-            obj = self.read_obj(deep)
-            if obj:
-                objs.append(obj)
-            else:
-                break
-        return objs
-
     def read_obj(self, deep):
         if not self.read_sz(' ' * deep, False):
             return
@@ -134,12 +173,17 @@ class Lexer:
             if self.read_sz(' ' * (deep+2) + 'metatable: \n', False):
                 obj['meta'] = self.read_obj(deep+2)
 
+            non_gc_count = 1
             while True:
                 if self.read_sz(' ' * (deep+2) + 'hashpart_key: \n', False):
                     key = self.read_obj(deep+2)
                     self.read_sz(' ' * (deep+2) + 'hashpart_value: \n')
                     value = self.read_obj(deep+2)
-                    obj['hashpart'][key] = value
+                    if key == 'Non-gc':
+                        obj['hashpart'][key + f'_{non_gc_count}'] = value
+                        non_gc_count += 1
+                    else:
+                        obj['hashpart'][key] = value
                 elif self.read_sz(' ' * (deep+2) + 'array_part: \n', False):
                     value = self.read_obj(deep+2)
                     obj['arraypart'].append(value)
@@ -304,7 +348,7 @@ class Lexer:
             if obj_addr == target_addr:
                 return format_path(target_addr)
 
-            if obj_addr == 'Non-gc':
+            if tostr(obj_addr).startswith('Non-gc'):
                 continue
 
             obj = self.objs[obj_addr]
@@ -366,7 +410,7 @@ class Lexer:
         return 'not found'
 
     def str_obj(self, addr):
-        if addr == 'Non-gc':
+        if tostr(addr).startswith('Non-gc'):
             return "Non-gc"
         obj = self.objs[addr]
         if obj['type'] == 'STR':

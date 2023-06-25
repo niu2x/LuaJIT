@@ -8,7 +8,7 @@ void lj_alloc_debug(long long size, const char *reason) {
 		lj_alloc_debug_handler(size, reason);
 	}
 	else {
-		printf("lj_alloc_debug: %lld %s\n", size, reason);
+		// printf("lj_alloc_debug: %lld %s\n", size, reason);
 	}
 }
 
