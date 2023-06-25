@@ -282,7 +282,7 @@ class Lexer:
         
 
         def format_path(addr):
-            result = [addr.decode('utf-8')]
+            result = [self.str_obj(addr)]
             while addr in path:
                 parent = path[addr]
                 addr = parent[0]
@@ -382,7 +382,7 @@ class Lexer:
             proto = obj['proto']
             return f'Lua-Func[{self.str_obj(proto)}]'
         else:
-            return obj['type'] + '[]'
+            return obj['type'] + f'[{addr}]'
 
 
 def subcommand_cache(args):
