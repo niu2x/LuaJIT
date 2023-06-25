@@ -263,13 +263,19 @@ class Lexer:
         to_visit.append(self.mainthread)
         to_visit.append(self.mainthread_env)
         to_visit.append(self.registrytv)
+
+        visited[self.mainthread] = True
+        visited[self.mainthread_env] = True
+        visited[self.registrytv] = True
+
         for v in self.gc_root:
             to_visit.append(v)
+            visited[v] = True
 
         path = {}
 
         def format_path(addr):
-            result = [addr]
+            result = [addr.decode('utf-8')]
             while addr in path:
                 parent = path[addr]
                 addr = parent[0]
@@ -283,7 +289,7 @@ class Lexer:
             if addr not in visited:
                 to_visit.append(addr)
                 path[addr] = parent
-            visited[addr] = True
+                visited[addr] = True
 
         while len(to_visit) > 0:
             obj_addr = to_visit.popleft()
