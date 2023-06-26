@@ -408,12 +408,12 @@ class Lexer:
                 for k in obj['hashpart_week_value']:
                     v = obj['hashpart_week_value'][k]
                     key_str = self.str_obj(k)
-                    add_to_visit(k, (obj_addr, f'Tab[hashpart KEY:{key_str} key]'))
+                    add_to_visit(k, (obj_addr, f'Tab[hashpart_week_value KEY:{key_str} key]'))
 
                 for k in obj['hashpart_week_key']:
                     v = obj['hashpart_week_key'][k]
                     key_str = self.str_obj(k)
-                    add_to_visit(v, (obj_addr, f'Tab[hashpart KEY:{key_str} value]'))
+                    add_to_visit(v, (obj_addr, f'Tab[hashpart_week_key KEY:{key_str} value]'))
 
                 if 'meta' in obj:
                     s = obj['meta']

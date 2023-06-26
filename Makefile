@@ -163,3 +163,10 @@ dist-animal: default
 .PHONY: all install amalg clean
 
 ##############################################################################
+
+
+%.cache: /home/niu2x/project/animal-git/animal-core/%.txt
+	python tools/dump_print.py cache -c $@ -f $<
+
+%.show: %.cache
+	python tools/dump_print.py show -c $< | sort > $@
