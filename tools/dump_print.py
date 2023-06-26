@@ -392,7 +392,7 @@ class Lexer:
                     add_to_visit(s, (obj_addr, 'Func[proto]'))
 
                 for s in obj['uv']:
-                    add_to_visit(s, (obj_addr, 'Func[uv]'))
+                    add_to_visit(s, (obj_addr, self.str_obj(obj_addr) + '[uv]'))
 
 
             elif obj['type'] == 'Tab':
