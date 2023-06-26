@@ -153,6 +153,23 @@ size_t lj_gc_separateudata(global_State *g, int all)
   return m;
 }
 
+static int check_table_weak(global_State *g,GCtab *t) {
+  int weak = 0;
+
+  GCtab *mt = tabref(t->metatable);
+  cTValue *mode = lj_meta_fastg(g, mt, MM_mode);
+  if (mode && tvisstr(mode)) { 
+    const char *modestr = strVdata(mode);
+    int c;
+    while ((c = *modestr++)) {
+      if (c == 'k') weak |= LJ_GC_WEAKKEY;
+      else if (c == 'v') weak |= LJ_GC_WEAKVAL;
+      else if (c == 'K') weak = (int)(~0u & ~LJ_GC_WEAKVAL);
+    }
+  }
+  return weak;
+}
+
 /* -- Propagation phase --------------------------------------------------- */
 
 /* Traverse a table. */
@@ -780,6 +797,10 @@ static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, co
     int gct = o->gch.gct;
     if (gct == ~LJ_TTAB) {
       GCtab *t = gco2tab(o);
+      int weak = check_table_weak(g, t);
+      int weak_val = weak & LJ_GC_WEAKVAL;
+      int weak_key = weak & LJ_GC_WEAKKEY;
+
       fprintf(fp, "TAB[%p]\n", t);        
       GCtab *mt = tabref(t->metatable);
       if (mt)
@@ -788,7 +809,7 @@ static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, co
       MSize i, asize = t->asize;
       for (i = 0; i < asize; i++){
         if(tvisgcv(arrayslot(t, i)))
-          lj_dump_single_gco(g, fp, gcV(arrayslot(t, i)), deep + 2, "array_part");
+          lj_dump_single_gco(g, fp, gcV(arrayslot(t, i)), deep + 2, weak_val? "array_part_weak" : "array_part");
       }
 
       if (t->hmask > 0) {  /* Mark hash part. */
@@ -798,16 +819,16 @@ static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, co
           Node *n = &node[i];
           if (!tvisnil(&n->val)) {  /* Mark non-empty slot. */
             if(tvisgcv(&n->key)){
-              lj_dump_single_gco(g, fp, gcV(&n->key), deep+2, "hashpart_key");
+              lj_dump_single_gco(g, fp, gcV(&n->key), deep+2,  weak_key? "hashpart_key_weak" : "hashpart_key");
             }
             else{
-              lj_dump_single_gco(g, fp, NULL, deep+2, "hashpart_key");
+              lj_dump_single_gco(g, fp, NULL, deep+2,  weak_key? "hashpart_key_weak" : "hashpart_key");
             }
             if(tvisgcv(&n->val)){
-              lj_dump_single_gco(g, fp, gcV(&n->val), deep+2, "hashpart_value");
+              lj_dump_single_gco(g, fp, gcV(&n->val), deep+2, weak_val? "hashpart_value_weak" : "hashpart_value");
             }
             else{
-              lj_dump_single_gco(g, fp, NULL, deep+2, "hashpart_value");
+              lj_dump_single_gco(g, fp, NULL, deep+2, weak_val? "hashpart_value_weak" : "hashpart_value");
             }
           }
         }

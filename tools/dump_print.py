@@ -167,7 +167,14 @@ class Lexer:
 
             addr = self.read_until(']')
             self.read_sz(']\n')
-            obj = {'type': "Tab", 'hashpart':{} , 'arraypart':[] }
+            obj = {'type': "Tab"
+                , 'hashpart':{} 
+                , 'arraypart':[] 
+                , 'hashpart_week_value': {}
+                , 'hashpart_week_key': {}
+                , 'hashpart_week_all': {}
+                , 'arraypart_weak':[] 
+            }
             self.objs[addr] = obj
 
             if self.read_sz(' ' * (deep+2) + 'metatable: \n', False):
@@ -177,16 +184,29 @@ class Lexer:
             while True:
                 if self.read_sz(' ' * (deep+2) + 'hashpart_key: \n', False):
                     key = self.read_obj(deep+2)
-                    self.read_sz(' ' * (deep+2) + 'hashpart_value: \n')
-                    value = self.read_obj(deep+2)
-                    if key == 'Non-gc':
-                        obj['hashpart'][key + f'_{non_gc_count}'] = value
-                        non_gc_count += 1
-                    else:
+                    if self.read_sz(' ' * (deep+2) + 'hashpart_value: \n', False):
+                        value = self.read_obj(deep+2)
                         obj['hashpart'][key] = value
+                    else:
+                        self.read_sz(' ' * (deep+2) + 'hashpart_value_weak: \n')
+                        value = self.read_obj(deep+2)
+                        obj['hashpart_week_value'][key] = value
+                elif self.read_sz(' ' * (deep+2) + 'hashpart_key_weak: \n', False):
+                    key = self.read_obj(deep+2)
+                    if self.read_sz(' ' * (deep+2) + 'hashpart_value: \n', False):
+                        value = self.read_obj(deep+2)
+                        obj['hashpart_week_key'][key] = value
+                    else:
+                        self.read_sz(' ' * (deep+2) + 'hashpart_value_weak: \n')
+                        value = self.read_obj(deep+2)
+                        obj['hashpart_week_all'][key] = value
+
                 elif self.read_sz(' ' * (deep+2) + 'array_part: \n', False):
                     value = self.read_obj(deep+2)
                     obj['arraypart'].append(value)
+                elif self.read_sz(' ' * (deep+2) + 'array_part_weak: \n', False):
+                    value = self.read_obj(deep+2)
+                    obj['arraypart_weak'].append(value)
                 else:
                     break
             obj['addr'] = addr
@@ -383,6 +403,16 @@ class Lexer:
                     v = obj['hashpart'][k]
                     key_str = self.str_obj(k)
                     add_to_visit(k, (obj_addr, f'Tab[hashpart KEY:{key_str} key]'))
+                    add_to_visit(v, (obj_addr, f'Tab[hashpart KEY:{key_str} value]'))
+
+                for k in obj['hashpart_week_value']:
+                    v = obj['hashpart_week_value'][k]
+                    key_str = self.str_obj(k)
+                    add_to_visit(k, (obj_addr, f'Tab[hashpart KEY:{key_str} key]'))
+
+                for k in obj['hashpart_week_key']:
+                    v = obj['hashpart_week_key'][k]
+                    key_str = self.str_obj(k)
                     add_to_visit(v, (obj_addr, f'Tab[hashpart KEY:{key_str} value]'))
 
                 if 'meta' in obj:
