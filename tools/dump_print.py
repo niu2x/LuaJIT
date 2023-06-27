@@ -115,7 +115,7 @@ class Lexer:
         self.read_sz('registrytv: \n')
         self.registrytv = self.read_obj(0)
 
-        while self.read_sz('gc_root_'):
+        while self.read_sz('gc_root_', False):
             self.read_until('\n')
             self.read_sz('\n')
             self.gc_root.append(self.read_obj(0))
@@ -308,10 +308,10 @@ class Lexer:
         cc = self.file.read(len_sz)
         if sz != cc:
             if must:
-                die(f'unexpect {chr(cc)}, expect {chr(c)} next is {self.file.read(128)}')
+                die(f'unexpect {cc}, expect {sz} next is {self.file.read(128)}')
             self.file.seek(pos)
             return False
-            
+
         return True
 
     def read_until(self, sep):
