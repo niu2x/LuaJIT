@@ -201,7 +201,7 @@ class Lexer:
                     if key == 'Non-gc':
                         key = f'{key}-{non_gc_count}'
                         non_gc_count += 1
-                        
+
                     if self.read_sz(' ' * (deep+2) + 'hashpart_value: \n', False):
                         value = self.read_obj(deep+2)
                         obj['hashpart_week_key'][key] = value
@@ -283,20 +283,35 @@ class Lexer:
             die(f"unsupport obj {self.read_until(']')}")
             pass
 
+    # def read_sz(self, sz, must=True):
+    #     pos = self.file.tell()
+    #     sz = sz.encode('utf-8')
+
+    #     for i in range(len(sz)):
+    #         c = sz[i]
+    #         cc = self.file.read(1);
+    #         if len(cc) != 1:
+    #             return False
+    #         cc = cc[0]
+    #         if c != cc:
+    #             if must:
+    #                 die(f'unexpect {chr(cc)}, expect {chr(c)} next is {self.file.read(128)}')
+    #             self.file.seek(pos)
+    #             return False
+    #     return True
+
+
     def read_sz(self, sz, must=True):
         pos = self.file.tell()
         sz = sz.encode('utf-8')
-        for i in range(len(sz)):
-            c = sz[i]
-            cc = self.file.read(1);
-            if len(cc) != 1:
-                return False
-            cc = cc[0]
-            if c != cc:
-                if must:
-                    die(f'unexpect {chr(cc)}, expect {chr(c)} next is {self.file.read(128)}')
-                self.file.seek(pos)
-                return False
+        len_sz = len(sz)
+        cc = self.file.read(len_sz)
+        if sz != cc:
+            if must:
+                die(f'unexpect {chr(cc)}, expect {chr(c)} next is {self.file.read(128)}')
+            self.file.seek(pos)
+            return False
+            
         return True
 
     def read_until(self, sep):
