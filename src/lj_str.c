@@ -174,6 +174,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
   s = lj_mem_newt(L, sizeof(GCstr)+len+1, GCstr, "GStr");
   newwhite(g, s);
   s->gct = ~LJ_TSTR;
+  s->debug_flags = 0;
   s->len = len;
 
   s->hash = h;

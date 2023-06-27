@@ -740,39 +740,61 @@ int LJ_FASTCALL lj_gc_step_jit(global_State *g, MSize steps)
 #define lj_gc_dumptv(g, fp, tv, prefix) \
 {  if(tvisgcv(tv)) lj_dump_gco(g, fp, gcV(tv), prefix); }
 
-static void array_append(void ***array, int *alloc, int *nr, void *data) {
-  if(*nr == *alloc) {
-    void ** new_array = malloc(sizeof(void *) * (*alloc * 2+1) );
-    if(*alloc != 0) {
-      memcpy(new_array, *array, sizeof(void *) * (*nr));
-      free(*array);
-    }
-    *array = new_array;
-    *alloc = *alloc * 2+1;
-  }
+// static int binary_search(void **array, int nr, void *target) {
+//   int s = 0;
+//   int e = nr;
+//   int next;
+//   while(s < e) {
+//     next = (s + e) / 2;
+//     if(array[next] == target){
+//       return next;
+//     }
+//     else if(array[next] < target) {
+//       s = next+1;
+//     }
+//     else {
+//       e = next;
+//     }
+//   }
+//   return - s - 1;
+// }
 
-  (*array) [ (*nr) ++ ] = data;
-}
+// static void array_insert(void ***array, int *alloc, int *nr, void *data, int pos) {
+//   if(*nr == *alloc) {
+//     void ** new_array = malloc(sizeof(void *) * (*alloc * 2+1) );
+//     if(*alloc != 0) {
+//       memcpy(new_array, *array, sizeof(void *) * (*nr));
+//       free(*array);
+//     }
+//     *array = new_array;
+//     *alloc = *alloc * 2+1;
+//   }
 
-static int array_exist(void **array, int nr, void *data) {
-  int i;
-  for(i = 0; i < nr; i ++)
-    if(array[i] == data)
-      return 1;
-  return 0;
-}
+//   // (*array) [ (*nr) ++ ] = data;
 
-static void array_free(void ***array, int *alloc, int *nr) {
-  if(*alloc != 0){
-    free(*array);
-    *array = NULL;
-    *alloc = *nr = 0;
-  }
-}
+//   for(int i = (*nr) -1; i> pos;  i -- ){
+//     (*array)[i] = (*array)[i-1];
+//   }
+//   (*array)[pos] = data;
+//   (*nr) ++;
 
-static void **visited = NULL;
-static int alloc = 0;
-static int nr = 0;
+// }
+
+// static int array_exist(void **array, int nr, void *data) {
+//   return binary_search(array, nr, data);
+// }
+
+// static void array_free(void ***array, int *alloc, int *nr) {
+//   if(*alloc != 0){
+//     free(*array);
+//     *array = NULL;
+//     *alloc = *nr = 0;
+//   }
+// }
+
+// static void **visited = NULL;
+// static int alloc = 0;
+// static int nr = 0;
 
 static void print_space(FILE *fp, int deep, const char *prefix) {
   int i;
@@ -784,6 +806,8 @@ static void print_space(FILE *fp, int deep, const char *prefix) {
   for(i = 0; i < deep; i ++) fputc(' ', fp);
 }
 
+uint8_t current_visited_flag = 0x61;
+
 static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, const char *prefix) {
 
   print_space(fp, deep, prefix);
@@ -791,9 +815,8 @@ static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, co
     fprintf(fp, "Non-gc obj\n");
     return;
   }
-
-  if(!array_exist(visited, nr, o)) {
-    array_append(&visited, &alloc, &nr, o);
+  if(o->gch.debug_flags != current_visited_flag) {
+    o->gch.debug_flags = current_visited_flag;
     int gct = o->gch.gct;
     if (gct == ~LJ_TTAB) {
       GCtab *t = gco2tab(o);
@@ -836,7 +859,9 @@ static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, co
     } 
     else if( gct == ~LJ_TSTR) {
       GCstr *str = gco2str(o);
-      fprintf(fp, "STR[%p, fixed: %d]: (%d) %s\n", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len, strdata(str));
+      fprintf(fp, "STR[%p, fixed: %d]: (%d) ", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len);
+      fwrite(strdata(str), 1, str->len, fp);
+      fprintf(fp, "\n");
     }
     else if(gct == ~LJ_TUPVAL) {
       GCupval *uv = gco2uv(o);
@@ -911,14 +936,6 @@ static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, co
 
 }
 
-static void lj_dump_gco(global_State *g, FILE *fp,  GCobj *o, const char *prefix) {
-  while(o) {
-    lj_dump_single_gco(g, fp, o, 0, prefix);
-    o = gcref( o->gch.nextgc);
-  } 
-
-}
-
 static void lj_gc_dump_gcroot(global_State *g, FILE *fp)
 {
   ptrdiff_t i;
@@ -933,25 +950,27 @@ static void lj_gc_dump_gcroot(global_State *g, FILE *fp)
 
 static void _lj_gc_dump(global_State *g, const char *path) {
 
+  current_visited_flag = 0x61 + (current_visited_flag+1) % 16;
+
   FILE * fp = fopen(path, "wb");
 
   fprintf(fp, "lj_gc_dump: total %u\n", g->gc.total);
-  MSize i, strmask;
-  strmask = g->strmask;
-  for (i = 0; i <= strmask; i++){  /* Free all string hash chains. */
-    GCRef *p = & g->strhash[i];
-    GCobj *o;
-    while ((o = gcref(*p)) != NULL ) {
-      GCstr *str = gco2str(o);
-      fprintf(fp, "STR[%p, fixed: %d]: (%d) ", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len);
-      fwrite(strdata(str), 1, str->len, fp);
-      fprintf(fp, "\n");
-      p = &o->gch.nextgc;
-    }
-  }
+  // MSize i, strmask;
+  // strmask = g->strmask;
+  // for (i = 0; i <= strmask; i++){  /* Free all string hash chains. */
+  //   GCRef *p = & g->strhash[i];
+  //   GCobj *o;
+  //   while ((o = gcref(*p)) != NULL ) {
+  //     GCstr *str = gco2str(o);
+  //     fprintf(fp, "STR[%p, fixed: %d]: (%d) ", str, (o->gch.marked & LJ_GC_FIXED) != 0, str->len);
+  //     fwrite(strdata(str), 1, str->len, fp);
+  //     fprintf(fp, "\n");
+  //     p = &o->gch.nextgc;
+  //   }
+  // }
 
 
-  array_free(&visited, &alloc, &nr);
+  // array_free(&visited, &alloc, &nr);
 
   lj_dump_single_gco(g, fp, obj2gco(mainthread(g)), 0, "mainthread");
   lj_dump_single_gco(g, fp, obj2gco(tabref(mainthread(g)->env)), 0, "mainthread_env");

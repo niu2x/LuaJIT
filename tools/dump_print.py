@@ -180,10 +180,15 @@ class Lexer:
             if self.read_sz(' ' * (deep+2) + 'metatable: \n', False):
                 obj['meta'] = self.read_obj(deep+2)
 
-            non_gc_count = 1
+            non_gc_count = 0
             while True:
+                
                 if self.read_sz(' ' * (deep+2) + 'hashpart_key: \n', False):
                     key = self.read_obj(deep+2)
+                    if key == 'Non-gc':
+                        key = f'{key}-{non_gc_count}'
+                        non_gc_count += 1
+
                     if self.read_sz(' ' * (deep+2) + 'hashpart_value: \n', False):
                         value = self.read_obj(deep+2)
                         obj['hashpart'][key] = value
@@ -193,6 +198,10 @@ class Lexer:
                         obj['hashpart_week_value'][key] = value
                 elif self.read_sz(' ' * (deep+2) + 'hashpart_key_weak: \n', False):
                     key = self.read_obj(deep+2)
+                    if key == 'Non-gc':
+                        key = f'{key}-{non_gc_count}'
+                        non_gc_count += 1
+                        
                     if self.read_sz(' ' * (deep+2) + 'hashpart_value: \n', False):
                         value = self.read_obj(deep+2)
                         obj['hashpart_week_key'][key] = value

@@ -56,7 +56,7 @@ typedef struct GCRef {
 } GCRef;
 
 /* Common GC header for all collectable objects. */
-#define GCHeader	GCRef nextgc; uint8_t marked; uint8_t gct
+#define GCHeader	GCRef nextgc; uint8_t marked; uint8_t debug_flags; uint8_t gct
 /* This occupies 6 bytes, so use the next 2 bytes for non-32 bit fields. */
 
 #if LJ_GC64

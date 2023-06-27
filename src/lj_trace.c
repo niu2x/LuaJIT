@@ -139,6 +139,7 @@ static void trace_save(jit_State *J, GCtrace *T)
   setgcrefp(J2G(J)->gc.root, T);
   newwhite(J2G(J), T);
   T->gct = ~LJ_TTRACE;
+  T->debug_flags = 0;
   T->ir = (IRIns *)p - J->cur.nk;
   memcpy(p, J->cur.ir+J->cur.nk, szins);
   p += szins;

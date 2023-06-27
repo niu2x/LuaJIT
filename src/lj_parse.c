@@ -1568,6 +1568,7 @@ static GCproto *fs_finish(LexState *ls, BCLine line)
   /* Allocate prototype and initialize its fields. */
   pt = (GCproto *)lj_mem_newgco(L, (MSize)sizept, lj_alloc_debug_strcat_gcstr("GCproto", ls->chunkname, ls->linenumber));
   pt->gct = ~LJ_TPROTO;
+  pt->debug_flags = 0;
   pt->sizept = (MSize)sizept;
   pt->trace = 0;
   pt->flags = (uint8_t)(fs->flags & ~(PROTO_HAS_RETURN|PROTO_FIXUP_RETURN));
