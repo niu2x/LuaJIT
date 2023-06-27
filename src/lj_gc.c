@@ -806,7 +806,7 @@ static void print_space(FILE *fp, int deep, const char *prefix) {
   for(i = 0; i < deep; i ++) fputc(' ', fp);
 }
 
-uint8_t current_visited_flag = 0x61;
+static uint8_t current_visited_flag = 0x61;
 
 static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, const char *prefix) {
 

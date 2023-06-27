@@ -112,6 +112,7 @@ GCfunc *lj_func_newC(lua_State *L, MSize nelems, GCtab *env)
 {
   GCfunc *fn = (GCfunc *)lj_mem_newgco(L, sizeCfunc(nelems), "CFunc");
   fn->c.gct = ~LJ_TFUNC;
+  fn->c.debug_flags = 0;
   fn->c.ffid = FF_C;
   fn->c.nupvalues = (uint8_t)nelems;
   /* NOBARRIER: The GCfunc is new (marked white). */
@@ -125,6 +126,7 @@ static GCfunc *func_newL(lua_State *L, GCproto *pt, GCtab *env)
   uint32_t count;
   GCfunc *fn = (GCfunc *)lj_mem_newgco(L, sizeLfunc((MSize)pt->sizeuv), "LFunc");
   fn->l.gct = ~LJ_TFUNC;
+  fn->l.debug_flags = 0;
   fn->l.ffid = FF_LUA;
   fn->l.nupvalues = 0;  /* Set to zero until upvalues are initialized. */
   /* NOBARRIER: Really a setgcref. But the GCfunc is new (marked white). */

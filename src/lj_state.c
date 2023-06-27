@@ -203,6 +203,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud)
   g->gc.currentwhite = LJ_GC_WHITE0 | LJ_GC_FIXED;
   g->strempty.marked = LJ_GC_WHITE0;
   g->strempty.gct = ~LJ_TSTR;
+  g->strempty.debug_flags = 0;
   g->allocf = f;
   g->allocd = ud;
   setgcref(g->mainthref, obj2gco(L));
