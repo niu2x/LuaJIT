@@ -55,8 +55,24 @@ typedef struct GCRef {
 #endif
 } GCRef;
 
+typedef struct List {
+  struct List *prev;
+  struct List *next;
+}List;
+
+#define List_init(list) {list, list}
+#define List_append(list, elem) { \
+  (elem)->prev = (list)->prev;    \
+  (elem)->prev->next = (elem);    \
+  (list)->prev = (elem);          \
+  (elem)->next = (list);          \
+}
+#define List_empty(list) ((list)->prev == (list) && (list)->next == (list))
+#define List_entry(elem, Type, member) ((Type *)(((uint8_t*)(elem)) - offsetof(Type, member)))
+#define List_first(list) (list)->next
+#define List_remove(elem) {(elem)->prev->next = (elem)->next; (elem)->next->prev = (elem)->prev; }
 /* Common GC header for all collectable objects. */
-#define GCHeader	GCRef nextgc; uint8_t marked; uint8_t debug_flags; uint8_t gct
+#define GCHeader	GCRef nextgc; uint8_t marked; uint8_t debug_flags; List debug_list; uint8_t gct
 /* This occupies 6 bytes, so use the next 2 bytes for non-32 bit fields. */
 
 #if LJ_GC64

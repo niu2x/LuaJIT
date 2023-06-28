@@ -435,9 +435,13 @@ LJLIB_CF(gcinfo)
 LJLIB_CF(collectgarbage)
 {
   int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  /* ORDER LUA_GC* */
-    "\4stop\7restart\7collect\5count\1\377\4step\10setpause\12setstepmul\1\377\11isrunning\4dump");
+    "\4stop\7restart\7collect\5count\1\377\4step\10setpause\12setstepmul\1\377\11isrunning\4dump\4test");
   if(opt == LUA_GCDUMP) {
     lj_gc_dump(L, strdata(lj_lib_checkstr(L, 2)));
+    return 0;
+  }
+  else if(opt == LUA_GCTEST) {
+    lj_gc_test(L);
     return 0;
   }
   else if (opt == LUA_GCCOUNT) {
