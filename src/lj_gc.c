@@ -746,9 +746,14 @@ static void print_space(FILE *fp, int deep, const char *prefix) {
   for(i = 0; i < deep; i ++) fputc(' ', fp);
 }
 
-static uint8_t current_visited_flag = 0x61;
+#define VISIT_MASK ((uint8_t) (1 << 1))
+#define NEWER_MASK ((uint8_t) (1 << 0))
+
+static uint8_t current_visited_flag = 0;
+
 #define CHANGE_VISIT_FLAG() \
-  {current_visited_flag = 0x61 + (current_visited_flag+1) % 16;}
+  { current_visited_flag ^= VISIT_MASK; }
+
 
 static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, const char *prefix) {
 
@@ -757,8 +762,10 @@ static void lj_dump_single_gco(global_State *g, FILE *fp, GCobj *o, int deep, co
     fprintf(fp, "Non-gc obj\n");
     return;
   }
-  if(o->gch.debug_flags != current_visited_flag) {
-    o->gch.debug_flags = current_visited_flag;
+  if((o->gch.debug_flags & VISIT_MASK) != current_visited_flag ) {
+    o->gch.debug_flags &= ~VISIT_MASK;
+    o->gch.debug_flags |= current_visited_flag;
+
     int gct = o->gch.gct;
     if (gct == ~LJ_TTAB) {
       GCtab *t = gco2tab(o);
@@ -906,6 +913,7 @@ void lj_gc_dump(lua_State *L, const char *path) {
   _lj_gc_dump(G(L), path);
 }
 
+typedef int (*PtrCompare)(void *a, void *b);
 
 typedef struct PtrArray {
   void * *base;
@@ -919,19 +927,21 @@ typedef struct PtrArray {
   b = tmp; \
 }
 
-static MSize partition(void **base, MSize s, MSize e) {
+static MSize partition(void **base, MSize s, MSize e, PtrCompare compare) {
   MSize pivot = s;
   s ++;
   e --;
 
   void *tmp;
 
+  #define LESS_EQUAL(a, b)  (compare?compare((a), (b))<=0: (a)<=(b))
+
   while(s < e) {
-    while(s <= e && base[s] <= base[pivot]) {
+    while(s <= e && LESS_EQUAL(base[s], base[pivot])) {
       s ++;
     }     
 
-    while(s <= e && base[e] > base[pivot]) {
+    while(s <= e && LESS_EQUAL(base[pivot], base[e])) {
       e --;
     }
     if(s < e) {
@@ -939,7 +949,7 @@ static MSize partition(void **base, MSize s, MSize e) {
     }
   }
 
-  if (e > pivot && base[pivot] > base[e]) {
+  if (e > pivot && LESS_EQUAL(base[e], base[pivot])) {
     SWAP(base[pivot], base[e], tmp);
   }
 
@@ -947,16 +957,16 @@ static MSize partition(void **base, MSize s, MSize e) {
 }
 
 
-static void quick_sort(void **base, MSize s, MSize e) {
+static void quick_sort(void **base, MSize s, MSize e, PtrCompare compare) {
   if(s < e && s < e-1) {
-    MSize pivot = partition(base, s, e);
-    quick_sort(base, s, pivot);
-    quick_sort(base, pivot+1, e);
+    MSize pivot = partition(base, s, e, compare);
+    quick_sort(base, s, pivot, compare);
+    quick_sort(base, pivot+1, e, compare);
   }
 }
 
-static void PtrArray_sort(PtrArray *self) {
-  quick_sort(self->base, 0, self->nr);
+static void PtrArray_sort(PtrArray *self, PtrCompare compare) {
+  quick_sort(self->base, 0, self->nr, compare);
 }
 
 static void PtrArray_append(PtrArray *self, void *data) {
@@ -981,28 +991,34 @@ static PtrArray diff_objs = {NULL, 0, 0};
 
 static int current_ptr_group = 0;
 
+static GCobj non_gc;
+
 typedef void (*Visitor)(GCobj *obj);
 static void traverse_all(global_State *g, Visitor visitor) {
   CHANGE_VISIT_FLAG();
-
 // 使用宽度优先,所以需要一个队列存储后续要遍历的对象
   List to_visit_queue = List_init(&to_visit_queue);
   
-  #define ADD_TO_QUEUE(o) { \
-    if((o)->gch.debug_flags != current_visited_flag) { \
-      (o)->gch.debug_flags = current_visited_flag; \
+  #define ADD_TO_QUEUE(o, parent, desc, param) { \
+    if( (((o)->gch.debug_flags & VISIT_MASK) != current_visited_flag) || ( ((o)->gch.debug_flags & NEWER_MASK) == 0 ) )  { \
+      (o)->gch.debug_flags &= ~VISIT_MASK; \
+      (o)->gch.debug_flags |= current_visited_flag; \
+      (o)->gch.debug_flags |= NEWER_MASK; \
       List_append(&to_visit_queue, &((o)->gch.debug_list)); \
+      o->gch.debug_path = (parent); \
+      o->gch.debug_path_desc = (desc); \
+      o->gch.debug_path_param = (param); \
     } \
   } 
 
-  ADD_TO_QUEUE(obj2gco(gcV(&g->registrytv)));
-  ADD_TO_QUEUE(obj2gco(mainthread(g)));
-  ADD_TO_QUEUE(obj2gco(tabref(mainthread(g)->env)));
+  ADD_TO_QUEUE(obj2gco(gcV(&g->registrytv)), NULL, "register", NULL);
+  ADD_TO_QUEUE(obj2gco(mainthread(g)), NULL, "mainthread", NULL);
+  ADD_TO_QUEUE(obj2gco(tabref(mainthread(g)->env)), NULL, "_G", NULL);
 
   ptrdiff_t i;
   for (i = 0; i < GCROOT_MAX; i++){
     if (gcref(g->gcroot[i]) != NULL){
-      ADD_TO_QUEUE(gcref(g->gcroot[i]));
+      ADD_TO_QUEUE(gcref(g->gcroot[i]), NULL, "gc_root", NULL);
     }
   }
 
@@ -1024,14 +1040,14 @@ static void traverse_all(global_State *g, Visitor visitor) {
 
       GCtab *mt = tabref(t->metatable);
       if (mt){
-        ADD_TO_QUEUE(obj2gco(mt));
+        ADD_TO_QUEUE(obj2gco(mt), obj, "metatable", NULL);
       }
 
       MSize i, asize = t->asize;
       for (i = 0; i < asize; i++){
         if(tvisgcv(arrayslot(t, i))){
           if(!weak_val) {
-            ADD_TO_QUEUE(gcV(arrayslot(t, i)));
+            ADD_TO_QUEUE(gcV(arrayslot(t, i)), obj, "array_value", NULL);
           }
         }
       }
@@ -1044,12 +1060,12 @@ static void traverse_all(global_State *g, Visitor visitor) {
           if (!tvisnil(&n->val)) {  /* Mark non-empty slot. */
             if(tvisgcv(&n->key)){
               if(!weak_key){
-                ADD_TO_QUEUE(gcV(&n->key));
+                ADD_TO_QUEUE(gcV(&n->key), obj, "key", NULL);
               }
             }
             if(tvisgcv(&n->val)){
               if(!weak_val) {
-                ADD_TO_QUEUE(gcV(&n->val));
+                ADD_TO_QUEUE(gcV(&n->val), obj, "hash_value", tvisgcv(&n->key)? gcV(&n->key): &non_gc );
               }
             }
           }
@@ -1061,7 +1077,7 @@ static void traverse_all(global_State *g, Visitor visitor) {
     else if(gct == ~LJ_TUPVAL) {
       GCupval *uv = gco2uv(obj);
       if(tvisgcv(uvval(uv))){
-        ADD_TO_QUEUE(gcV(uvval(uv)));
+        ADD_TO_QUEUE(gcV(uvval(uv)), obj, "uv_content", NULL);
       }
     }
     else if(gct == ~LJ_TTHREAD) {
@@ -1069,36 +1085,36 @@ static void traverse_all(global_State *g, Visitor visitor) {
       TValue *slot, *top = th->top;
       for (slot = tvref(th->stack)+1+LJ_FR2; slot < top; slot++){
         if(tvisgcv(slot)){
-          ADD_TO_QUEUE(gcV(slot));
+          ADD_TO_QUEUE(gcV(slot), obj, "stack", NULL);
         }
       }
-      ADD_TO_QUEUE(obj2gco(tabref(th->env)));
+      ADD_TO_QUEUE(obj2gco(tabref(th->env)), obj, "env", NULL);
 
     }
     else if(gct == ~LJ_TPROTO) {
       GCproto *pt = gco2pt(obj);
-      ADD_TO_QUEUE(obj2gco(proto_chunkname(pt)));
+      ADD_TO_QUEUE(obj2gco(proto_chunkname(pt)), obj, "chunkname", NULL);
 
       ptrdiff_t i;
       for (i = -(ptrdiff_t)pt->sizekgc; i < 0; i++) {
-        ADD_TO_QUEUE(proto_kgc(pt, i));
+        ADD_TO_QUEUE(proto_kgc(pt, i), obj, "kgc", NULL);
       }
 
     }
     else if(gct == ~LJ_TFUNC) {
       GCfunc * fn = gco2func(obj);
-      ADD_TO_QUEUE(obj2gco(tabref(fn->c.env)));
+      ADD_TO_QUEUE(obj2gco(tabref(fn->c.env)), obj, "env", NULL);
 
       if (isluafunc(fn)) {
-        ADD_TO_QUEUE(obj2gco(funcproto(fn)));
+        ADD_TO_QUEUE(obj2gco(funcproto(fn)), obj, "proto", NULL);
         uint32_t i;
         for (i = 0; i < fn->l.nupvalues; i++)  /* Mark Lua function upvalues. */
-          ADD_TO_QUEUE(obj2gco(&gcref(fn->l.uvptr[i])->uv));
+          ADD_TO_QUEUE(obj2gco(&gcref(fn->l.uvptr[i])->uv), obj, "l_upval", NULL);
       } else {
         uint32_t i;
         for (i = 0; i < fn->c.nupvalues; i++) {
           if(tvisgcv(&fn->c.upvalue[i])){
-            ADD_TO_QUEUE(gcV(&fn->c.upvalue[i]));
+            ADD_TO_QUEUE(gcV(&fn->c.upvalue[i]), obj, "c_upval", NULL);
           }
         }
       }
@@ -1107,7 +1123,7 @@ static void traverse_all(global_State *g, Visitor visitor) {
       GCudata *ud = gco2ud(obj);
       GCtab *mt = tabref(ud->metatable);
       if(mt) {
-        ADD_TO_QUEUE(obj2gco(mt));
+        ADD_TO_QUEUE(obj2gco(mt), obj, "metatable", NULL);
       }
     }
   }
@@ -1119,6 +1135,7 @@ static void test_visitor(GCobj *obj) {
 
 static void save_ptr(GCobj *obj) {
   PtrArray_append(&obj_ptr_array[current_ptr_group], obj);
+  obj->gch.debug_counter = 0;
 }
 
 static void diff_ptr_group(global_State *g) {
@@ -1130,10 +1147,6 @@ static void diff_ptr_group(global_State *g) {
 
   MSize old_nr = obj_ptr_array[old_group].nr;
   MSize new_nr = obj_ptr_array[new_group].nr;
-
-  if(!old_nr) {
-    return ;
-  }
 
   PtrArray_clear(&diff_objs);
 
@@ -1164,11 +1177,49 @@ static void diff_ptr_group(global_State *g) {
     new_index ++;
   }
 
-  for(int i = 0; i < diff_objs.nr; i ++) {
-    printf("%d: %p\n", i, diff_objs.base[i]);
-  }
 
 }
+
+static int gco_debug_counter_compare(GCobj *a, GCobj *b) {
+  int ca = a->gch.debug_counter;
+  int cb = b->gch.debug_counter;
+  if(ca > cb)
+    return -1;
+  else if(ca == cb)
+    return 0;
+  return 1;
+}
+
+void dump_gcobj(GCobj *obj) {
+  int gct = obj->gch.gct;
+  if (gct == ~LJ_TTAB) {
+    printf("TABLE");
+  } 
+  else if( gct == ~LJ_TSTR) {
+    printf("STR(");
+    GCstr *str = gco2str(obj);
+    fwrite(strdata(str), 1, str->len, stdout);
+    printf(")");
+  }
+  else if(gct == ~LJ_TUPVAL) {
+    printf("UPVAL");
+  }
+  else if(gct == ~LJ_TTHREAD) {
+    printf("THREAD");
+
+  }
+  else if(gct == ~LJ_TPROTO) {
+    printf("PROTO");
+  }
+  else if(gct == ~LJ_TFUNC) {
+    printf("FUNC");
+  }
+  else if(gct == ~LJ_TUDATA) {
+    printf("UDATA");
+  }
+}
+
+static PtrArray stack_tmp = {NULL, 0, 0};
 
 void lj_gc_test(lua_State *L) {
   for(int i = 0; i < 16; i ++){
@@ -1177,9 +1228,57 @@ void lj_gc_test(lua_State *L) {
   current_ptr_group = 1 - current_ptr_group;
   PtrArray_clear(&obj_ptr_array[current_ptr_group]);
   traverse_all(G(L), &save_ptr);
-  PtrArray_sort(&obj_ptr_array[current_ptr_group]);
+  PtrArray_sort(&obj_ptr_array[current_ptr_group], NULL);
+
+  int old_group = 1 - current_ptr_group;
+  MSize old_nr = obj_ptr_array[old_group].nr;
+
+  if(old_nr == 0)
+    return;
 
   diff_ptr_group(G(L));
+
+
+  for(int i = 0; i < diff_objs.nr; i ++) {
+      GCobj *ptr = (GCobj *) diff_objs.base[i];
+      while(ptr) {
+        ptr->gch.debug_counter ++;
+        ptr = ptr->gch.debug_path;
+      }
+  }
+
+  PtrArray_sort(&diff_objs, gco_debug_counter_compare);
+  int show = 32;
+
+  for(int i = 0; i < show && i < diff_objs.nr; i ++) {
+    PtrArray_clear(&stack_tmp);
+    GCobj *ptr = (GCobj *) diff_objs.base[i];
+    while(ptr) {
+      PtrArray_append(&stack_tmp, ptr);
+      ptr = ptr->gch.debug_path;
+    }
+
+    for(int k = stack_tmp.nr -1; k >= 0; k -- ) {
+        ptr = stack_tmp.base[k];
+        if(ptr->gch.debug_path_desc) {
+          printf("(desc:%s) ", ptr->gch.debug_path_desc);
+          if(ptr->gch.debug_path_param) {
+            printf("(param: ");
+            if(&non_gc == ptr->gch.debug_path_param) {
+              printf("non_gc");
+            }
+            else {
+              dump_gcobj(ptr->gch.debug_path_param);
+            }
+            printf(")");
+          }
+        }
+        dump_gcobj(ptr);
+        printf("(addr: %p)(counter: %d) ->", ptr, ptr->gch.debug_counter);
+    }
+
+    printf("\n");
+  }
 }
 
 /* Perform a full GC cycle. */

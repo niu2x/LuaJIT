@@ -71,8 +71,18 @@ typedef struct List {
 #define List_entry(elem, Type, member) ((Type *)(((uint8_t*)(elem)) - offsetof(Type, member)))
 #define List_first(list) (list)->next
 #define List_remove(elem) {(elem)->prev->next = (elem)->next; (elem)->next->prev = (elem)->prev; }
+  
+union GCobj;
+
 /* Common GC header for all collectable objects. */
-#define GCHeader	GCRef nextgc; uint8_t marked; uint8_t debug_flags; List debug_list; uint8_t gct
+#define GCHeader	GCRef nextgc; uint8_t marked; \
+uint8_t debug_flags; \
+List debug_list; \
+union GCobj *debug_path; \
+char *debug_path_desc; \
+union GCobj *debug_path_param; \
+int debug_counter; \
+uint8_t gct
 /* This occupies 6 bytes, so use the next 2 bytes for non-32 bit fields. */
 
 #if LJ_GC64
