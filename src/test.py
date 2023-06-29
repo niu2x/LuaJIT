@@ -1,29 +1,26 @@
 def partition(base, s, e):
-    e -= 1;
     pivot = s
+    e -= 1;
+    s += 1
 
-    s +=1
-    
     while(s < e):
-        if(base[s] > base[e]):
+        while s <= e and base[s] <= base[pivot]:
+            s += 1
+
+        while s <= e and base[e] > base[pivot]:
+            e -= 1
+
+        if s < e:
             tmp = base[s]
             base[s] = base[e]
             base[e] = tmp
 
-        if(base[s] > left_max):
-            left_max = base[s];
-            left_max_index = s;
+    if e > pivot and base[pivot] > base[e]:
+        tmp = base[pivot]
+        base[pivot] = base[e]
+        base[e] = tmp
 
-        s += 1
-        e -= 1
-
-
-    if(e != left_max_index):
-        if(base[e] < left_max):
-            tmp = base[left_max_index]
-            base[left_max_index] = base[e]
-            base[e] = tmp
-
+    print('y', base, e)
     return e;
 
 def quick_sort(base, s, e):
@@ -32,6 +29,7 @@ def quick_sort(base, s, e):
         quick_sort(base, s, pivot);
         quick_sort(base, pivot+1, e);
 
-a = [3,2, 1, 0,5,3]
+a = [1, 2, 3, 21, 32, 13, -1]
+
 quick_sort(a, 0, len(a))
 print(a)

@@ -920,30 +920,27 @@ typedef struct PtrArray {
 }
 
 static MSize partition(void **base, MSize s, MSize e) {
-  void * left_max = NULL;
-  MSize left_max_index;
+  MSize pivot = s;
+  s ++;
+  e --;
+
   void *tmp;
 
-  e -= 1;
   while(s < e) {
-    if(base[s] > base[e]) {
+    while(s <= e && base[s] <= base[pivot]) {
+      s ++;
+    }     
+
+    while(s <= e && base[e] > base[pivot]) {
+      e --;
+    }
+    if(s < e) {
       SWAP(base[s], base[e], tmp);
     }
-
-
-    if(base[s] > left_max){
-      left_max = base[s];
-      left_max_index = s;
-    }
-
-
-    s ++;
-    e --;
   }
 
-  if(e != left_max_index) {
-    if(base[e] < left_max)
-      SWAP(base[left_max_index], base[e], tmp);
+  if (e > pivot && base[pivot] > base[e]) {
+    SWAP(base[pivot], base[e], tmp);
   }
 
   return e;
@@ -971,10 +968,16 @@ static void PtrArray_append(PtrArray *self, void *data) {
   self->base[(self->nr) ++] = data;
 }
 
+static void PtrArray_clear(PtrArray *self) {
+  self->nr = 0;
+}
+
 static PtrArray obj_ptr_array[2] = {
   {NULL, 0, 0},
   {NULL, 0, 0},
 };
+
+static PtrArray diff_objs = {NULL, 0, 0};
 
 static int current_ptr_group = 0;
 
@@ -1118,30 +1121,65 @@ static void save_ptr(GCobj *obj) {
   PtrArray_append(&obj_ptr_array[current_ptr_group], obj);
 }
 
-static void diff_objs(global_State *g) {
+static void diff_ptr_group(global_State *g) {
   int old_group = 1 - current_ptr_group;
   int new_group = current_ptr_group;
 
-  if(obj_ptr_array[old_group].nr > 0) {
-    printf("new_group nr %d\n", obj_ptr_array[new_group].nr);
-    printf("old_group nr %d\n", obj_ptr_array[old_group].nr);
+  void **old = obj_ptr_array[old_group].base;
+  void **new = obj_ptr_array[new_group].base;
+
+  MSize old_nr = obj_ptr_array[old_group].nr;
+  MSize new_nr = obj_ptr_array[new_group].nr;
+
+  if(!old_nr) {
+    return ;
+  }
+
+  PtrArray_clear(&diff_objs);
+
+  MSize old_index = 0;
+  MSize new_index = 0;
+
+  while(old_index < old_nr && new_index < new_nr) {
+
+    void *new_data = new[new_index];
+    void *old_data = old[old_index];
+
+    if(new_data == old_data) {
+      new_index ++;
+      old_index ++;
+    }
+    else if(new_data < old_data) {
+      PtrArray_append(&diff_objs, new_data);
+      new_index ++;
+    }
+    else {
+      old_index ++;
+    }
+
+  }
+
+  while(new_index < new_nr) {
+    PtrArray_append(&diff_objs, new[new_index]);
+    new_index ++;
+  }
+
+  for(int i = 0; i < diff_objs.nr; i ++) {
+    printf("%d: %p\n", i, diff_objs.base[i]);
   }
 
 }
-
 
 void lj_gc_test(lua_State *L) {
   for(int i = 0; i < 16; i ++){
     lj_gc_fullgc(L);
   }
   current_ptr_group = 1 - current_ptr_group;
+  PtrArray_clear(&obj_ptr_array[current_ptr_group]);
   traverse_all(G(L), &save_ptr);
-  // diff_objs(G(L));
-
   PtrArray_sort(&obj_ptr_array[current_ptr_group]);
-  for(int i = 0; i < obj_ptr_array[current_ptr_group].nr; i ++){
-    printf("obj: %p\n", obj_ptr_array[current_ptr_group].base[i]);
-  }
+
+  diff_ptr_group(G(L));
 }
 
 /* Perform a full GC cycle. */
