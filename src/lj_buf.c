@@ -96,9 +96,10 @@ SBuf * LJ_FASTCALL lj_buf_putstr(SBuf *sb, GCstr *s, const char *reason)
 
 /* -- High-level buffer put operations ------------------------------------ */
 
-SBuf * LJ_FASTCALL lj_buf_putstr_reverse(SBuf *sb, GCstr *s, const char *reason)
+SBuf * LJ_FASTCALL lj_buf_putstr_reverse(SBuf *sb, GCstr *s)
 {
   MSize len = s->len;
+  const char *reason = "string.reverse";
   char *p = lj_buf_more(sb, len, reason), *e = p+len;
   const char *q = strdata(s)+len-1;
   while (p < e)
@@ -107,8 +108,9 @@ SBuf * LJ_FASTCALL lj_buf_putstr_reverse(SBuf *sb, GCstr *s, const char *reason)
   return sb;
 }
 
-SBuf * LJ_FASTCALL lj_buf_putstr_lower(SBuf *sb, GCstr *s, const char *reason)
+SBuf * LJ_FASTCALL lj_buf_putstr_lower(SBuf *sb, GCstr *s)
 {
+  const char *reason = "string.lower";
   MSize len = s->len;
   char *p = lj_buf_more(sb, len, reason), *e = p+len;
   const char *q = strdata(s);
@@ -125,8 +127,9 @@ SBuf * LJ_FASTCALL lj_buf_putstr_lower(SBuf *sb, GCstr *s, const char *reason)
   return sb;
 }
 
-SBuf * LJ_FASTCALL lj_buf_putstr_upper(SBuf *sb, GCstr *s, const char *reason)
+SBuf * LJ_FASTCALL lj_buf_putstr_upper(SBuf *sb, GCstr *s)
 {
+  const char *reason = "string.upper";
   MSize len = s->len;
   char *p = lj_buf_more(sb, len, reason), *e = p+len;
   const char *q = strdata(s);
