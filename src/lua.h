@@ -228,7 +228,9 @@ LUA_API int  (lua_status) (lua_State *L);
 #define LUA_GCSETSTEPMUL	7
 #define LUA_GCISRUNNING   9
 #define LUA_GCDUMP    10
-#define LUA_GCTEST		11
+#define LUA_GCDIFF    11
+#define LUA_GCIGNOREOBJ   12
+#define LUA_GCIGNOREKEY		13
 
 LUA_API int (lua_gc) (lua_State *L, int what, int data);
 
@@ -351,7 +353,9 @@ LUA_API int lua_loadx (lua_State *L, lua_Reader reader, void *dt,
 		       const char *chunkname, const char *mode);
 
 LUA_API void lj_gc_dump(lua_State *L, const char *path);
-LUA_API void lj_gc_test(lua_State *L);
+LUA_API void lj_gc_diff(lua_State *L);
+LUA_API void lj_gc_ignore_obj(lua_State *L, void *obj);
+LUA_API void lj_gc_ignore_key(lua_State *L, void *obj);
 
 
 struct lua_Debug {

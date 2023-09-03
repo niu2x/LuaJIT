@@ -435,13 +435,22 @@ LJLIB_CF(gcinfo)
 LJLIB_CF(collectgarbage)
 {
   int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  /* ORDER LUA_GC* */
-    "\4stop\7restart\7collect\5count\1\377\4step\10setpause\12setstepmul\1\377\11isrunning\4dump\4test");
+    "\4stop\7restart\7collect\5count\1\377\4step\10setpause\12setstepmul\1\377\11isrunning\4dump\4diff\12ignore_obj\12ignore_key");
   if(opt == LUA_GCDUMP) {
     lj_gc_dump(L, strdata(lj_lib_checkstr(L, 2)));
     return 0;
   }
-  else if(opt == LUA_GCTEST) {
-    lj_gc_test(L);
+  else if(opt == LUA_GCDIFF) {
+    lj_gc_diff(L);
+    return 0;
+  }
+  else if(opt == LUA_GCIGNOREOBJ) {
+    const char *addr = strdata(lj_lib_checkstr(L, 2));
+    lj_gc_ignore_obj(L, (void*)strtoll(addr, NULL, 16));
+    return 0;
+  }
+  else if(opt == LUA_GCIGNOREKEY) {
+    lj_gc_ignore_key(L, lj_lib_checkstr(L, 2));
     return 0;
   }
   else if (opt == LUA_GCCOUNT) {

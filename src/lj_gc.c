@@ -982,6 +982,28 @@ static void PtrArray_clear(PtrArray *self) {
   self->nr = 0;
 }
 
+static int PtrArray_bin_search(PtrArray *self, void *data) {
+  MSize s = 0;
+  MSize e = self->nr;
+  MSize next;
+  while(s < e) {
+    next = (s+e) >> 1;
+    if(self->base[next] == data) 
+      return 1;
+    else if(self->base[next] < data) {
+      s = next + 1;
+    }
+    else {
+      e = next;
+    }
+  }
+
+  return 0;
+}
+
+static PtrArray ignore_objs = {NULL, 0, 0};
+static PtrArray ignore_keys = {NULL, 0, 0};
+
 static PtrArray obj_ptr_array[2] = {
   {NULL, 0, 0},
   {NULL, 0, 0},
@@ -994,12 +1016,12 @@ static int current_ptr_group = 0;
 static GCobj non_gc;
 
 typedef void (*Visitor)(GCobj *obj);
-static void traverse_all(global_State *g, Visitor visitor) {
+static void traverse_all(global_State *g, Visitor visitor, PtrArray *ignore_objs, PtrArray *ignore_keys) {
   CHANGE_VISIT_FLAG();
 // 使用宽度优先,所以需要一个队列存储后续要遍历的对象
   List to_visit_queue = List_init(&to_visit_queue);
   
-  #define ADD_TO_QUEUE(o, parent, desc, param) { \
+  #define __ADD_TO_QUEUE(o, parent, desc, param) { \
     if( (((o)->gch.debug_flags & VISIT_MASK) != current_visited_flag) || ( ((o)->gch.debug_flags & NEWER_MASK) == 0 ) )  { \
       (o)->gch.debug_flags &= ~VISIT_MASK; \
       (o)->gch.debug_flags |= current_visited_flag; \
@@ -1010,6 +1032,9 @@ static void traverse_all(global_State *g, Visitor visitor) {
       o->gch.debug_path_param = (param); \
     } \
   } 
+
+  #define ADD_TO_QUEUE(o, parent, desc, param) if(!PtrArray_bin_search(ignore_objs, o)) {__ADD_TO_QUEUE((o), (parent), (desc), (param));}
+
 
   ADD_TO_QUEUE(obj2gco(gcV(&g->registrytv)), NULL, "register", NULL);
   ADD_TO_QUEUE(obj2gco(mainthread(g)), NULL, "mainthread", NULL);
@@ -1065,7 +1090,10 @@ static void traverse_all(global_State *g, Visitor visitor) {
             }
             if(tvisgcv(&n->val)){
               if(!weak_val) {
-                ADD_TO_QUEUE(gcV(&n->val), obj, "hash_value", tvisgcv(&n->key)? gcV(&n->key): &non_gc );
+
+                if(! PtrArray_bin_search(ignore_keys, gcV(&n->key) )){
+                  ADD_TO_QUEUE(gcV(&n->val), obj, "hash_value", tvisgcv(&n->key)? gcV(&n->key): &non_gc );
+                }
               }
             }
           }
@@ -1183,7 +1211,7 @@ static void diff_ptr_group(global_State *g) {
 static int gco_debug_counter_compare(GCobj *a, GCobj *b) {
   int ca = a->gch.debug_counter;
   int cb = b->gch.debug_counter;
-  if(ca > cb)
+  if(ca < cb)
     return -1;
   else if(ca == cb)
     return 0;
@@ -1221,13 +1249,14 @@ void dump_gcobj(GCobj *obj) {
 
 static PtrArray stack_tmp = {NULL, 0, 0};
 
-void lj_gc_test(lua_State *L) {
+static void __lj_gc_diff(lua_State *L) {
+
   for(int i = 0; i < 16; i ++){
     lj_gc_fullgc(L);
   }
   current_ptr_group = 1 - current_ptr_group;
   PtrArray_clear(&obj_ptr_array[current_ptr_group]);
-  traverse_all(G(L), &save_ptr);
+  traverse_all(G(L), &save_ptr, &ignore_objs, &ignore_keys);
   PtrArray_sort(&obj_ptr_array[current_ptr_group], NULL);
 
   int old_group = 1 - current_ptr_group;
@@ -1248,7 +1277,7 @@ void lj_gc_test(lua_State *L) {
   }
 
   PtrArray_sort(&diff_objs, gco_debug_counter_compare);
-  int show = 32;
+  int show = 0x7FFFFFFF;
 
   for(int i = 0; i < show && i < diff_objs.nr; i ++) {
     PtrArray_clear(&stack_tmp);
@@ -1278,7 +1307,29 @@ void lj_gc_test(lua_State *L) {
     }
 
     printf("\n");
-  }
+  } 
+}
+
+void lj_gc_ignore_obj(lua_State *L, void *obj) {
+  current_ptr_group = 1 - current_ptr_group;
+  PtrArray_append(&ignore_objs, obj);
+  PtrArray_sort(&ignore_objs, NULL);
+  __lj_gc_diff(L);
+}
+
+
+void lj_gc_ignore_key(lua_State *L, void *key) {
+  current_ptr_group = 1 - current_ptr_group;
+  PtrArray_append(&ignore_keys, key);
+  PtrArray_sort(&ignore_keys, NULL);
+  __lj_gc_diff(L);
+}
+
+
+void lj_gc_diff(lua_State *L) {
+  PtrArray_clear(&ignore_objs);
+  PtrArray_clear(&ignore_keys);
+  __lj_gc_diff(L);
 }
 
 /* Perform a full GC cycle. */
