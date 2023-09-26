@@ -1161,6 +1161,17 @@ static void test_visitor(GCobj *obj) {
   printf("test_visitor: %p\n", obj);
 }
 
+static void *__find_target = NULL;
+
+static void findf_visitor(GCobj *obj) {
+  if(obj == __find_target) {
+    GCfunc *fn = gco2func(obj);
+    GCproto* proto = funcproto(fn);
+    printf("find it %s %d\n", strdata(proto_chunkname(proto)), proto->firstline);
+  }
+}
+
+
 static void save_ptr(GCobj *obj) {
   PtrArray_append(&obj_ptr_array[current_ptr_group], obj);
   obj->gch.debug_counter = 0;
@@ -1315,6 +1326,11 @@ void lj_gc_ignore_obj(lua_State *L, void *obj) {
   PtrArray_append(&ignore_objs, obj);
   PtrArray_sort(&ignore_objs, NULL);
   __lj_gc_diff(L);
+}
+
+void lj_gc_findf(lua_State *L, void *obj) {
+  __find_target = obj;
+  traverse_all(G(L), &findf_visitor, &ignore_objs, &ignore_keys);
 }
 
 

@@ -230,7 +230,8 @@ LUA_API int  (lua_status) (lua_State *L);
 #define LUA_GCDUMP    10
 #define LUA_GCDIFF    11
 #define LUA_GCIGNOREOBJ   12
-#define LUA_GCIGNOREKEY		13
+#define LUA_GCIGNOREKEY   13
+#define LUA_GCFINDF		14
 
 LUA_API int (lua_gc) (lua_State *L, int what, int data);
 
@@ -355,6 +356,7 @@ LUA_API int lua_loadx (lua_State *L, lua_Reader reader, void *dt,
 LUA_API void lj_gc_dump(lua_State *L, const char *path);
 LUA_API void lj_gc_diff(lua_State *L);
 LUA_API void lj_gc_ignore_obj(lua_State *L, void *obj);
+LUA_API void lj_gc_findf(lua_State *L, void *obj);
 LUA_API void lj_gc_ignore_key(lua_State *L, void *obj);
 
 
