@@ -1,0 +1,240 @@
+==== Building LuaJIT 2.1.0-beta3 ====
+DYNASM    host/buildvm_arch.h
+host/minilua ../dynasm/dynasm.lua   -D ENDIAN_LE -D P64 -D FFI -D FPU -D HFABI -D VER= -o host/buildvm_arch.h vm_x86.dasc
+HOSTCC    host/buildvm.o
+gcc  -O2 -fomit-frame-pointer -Wall   -I. -DLUAJIT_TARGET=LUAJIT_ARCH_x64 -DLJ_ARCH_HASFPU=1 -DLJ_ABI_SOFTFP=0  -c -o host/buildvm.o host/buildvm.c
+HOSTCC    host/buildvm_asm.o
+gcc  -O2 -fomit-frame-pointer -Wall   -I. -DLUAJIT_TARGET=LUAJIT_ARCH_x64 -DLJ_ARCH_HASFPU=1 -DLJ_ABI_SOFTFP=0  -c -o host/buildvm_asm.o host/buildvm_asm.c
+HOSTCC    host/buildvm_peobj.o
+gcc  -O2 -fomit-frame-pointer -Wall   -I. -DLUAJIT_TARGET=LUAJIT_ARCH_x64 -DLJ_ARCH_HASFPU=1 -DLJ_ABI_SOFTFP=0  -c -o host/buildvm_peobj.o host/buildvm_peobj.c
+HOSTCC    host/buildvm_lib.o
+gcc  -O2 -fomit-frame-pointer -Wall   -I. -DLUAJIT_TARGET=LUAJIT_ARCH_x64 -DLJ_ARCH_HASFPU=1 -DLJ_ABI_SOFTFP=0  -c -o host/buildvm_lib.o host/buildvm_lib.c
+HOSTCC    host/buildvm_fold.o
+gcc  -O2 -fomit-frame-pointer -Wall   -I. -DLUAJIT_TARGET=LUAJIT_ARCH_x64 -DLJ_ARCH_HASFPU=1 -DLJ_ABI_SOFTFP=0  -c -o host/buildvm_fold.o host/buildvm_fold.c
+HOSTLINK  host/buildvm
+gcc     -o host/buildvm host/buildvm.o host/buildvm_asm.o host/buildvm_peobj.o host/buildvm_lib.o host/buildvm_fold.o   
+BUILDVM   lj_vm.S
+host/buildvm -m elfasm -o lj_vm.S
+ASM       lj_vm.o
+gcc -fPIC -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_vm_dyn.o lj_vm.S
+gcc -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_vm.o lj_vm.S
+CC        lj_gc.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_gc_dyn.o lj_gc.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_gc.o lj_gc.c
+BUILDVM   lj_ffdef.h
+host/buildvm -m ffdef -o lj_ffdef.h lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c
+CC        lj_err.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_err_dyn.o lj_err.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_err.o lj_err.c
+CC        lj_char.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_char_dyn.o lj_char.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_char.o lj_char.c
+BUILDVM   lj_bcdef.h
+host/buildvm -m bcdef -o lj_bcdef.h lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c
+CC        lj_bc.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_bc_dyn.o lj_bc.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_bc.o lj_bc.c
+CC        lj_obj.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_obj_dyn.o lj_obj.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_obj.o lj_obj.c
+CC        lj_buf.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_buf_dyn.o lj_buf.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_buf.o lj_buf.c
+CC        lj_str.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_str_dyn.o lj_str.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_str.o lj_str.c
+CC        lj_tab.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_tab_dyn.o lj_tab.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_tab.o lj_tab.c
+CC        lj_func.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_func_dyn.o lj_func.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_func.o lj_func.c
+CC        lj_udata.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_udata_dyn.o lj_udata.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_udata.o lj_udata.c
+CC        lj_meta.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_meta_dyn.o lj_meta.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_meta.o lj_meta.c
+CC        lj_debug.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_debug_dyn.o lj_debug.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_debug.o lj_debug.c
+CC        lj_state.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_state_dyn.o lj_state.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_state.o lj_state.c
+CC        lj_dispatch.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_dispatch_dyn.o lj_dispatch.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_dispatch.o lj_dispatch.c
+CC        lj_vmevent.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_vmevent_dyn.o lj_vmevent.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_vmevent.o lj_vmevent.c
+CC        lj_vmmath.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_vmmath_dyn.o lj_vmmath.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_vmmath.o lj_vmmath.c
+CC        lj_strscan.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_strscan_dyn.o lj_strscan.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_strscan.o lj_strscan.c
+CC        lj_strfmt.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_strfmt_dyn.o lj_strfmt.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_strfmt.o lj_strfmt.c
+CC        lj_strfmt_num.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_strfmt_num_dyn.o lj_strfmt_num.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_strfmt_num.o lj_strfmt_num.c
+CC        lj_api.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_api_dyn.o lj_api.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_api.o lj_api.c
+CC        lj_profile.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_profile_dyn.o lj_profile.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_profile.o lj_profile.c
+CC        lj_lex.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_lex_dyn.o lj_lex.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_lex.o lj_lex.c
+CC        lj_parse.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_parse_dyn.o lj_parse.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_parse.o lj_parse.c
+CC        lj_bcread.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_bcread_dyn.o lj_bcread.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_bcread.o lj_bcread.c
+CC        lj_bcwrite.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_bcwrite_dyn.o lj_bcwrite.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_bcwrite.o lj_bcwrite.c
+CC        lj_load.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_load_dyn.o lj_load.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_load.o lj_load.c
+CC        lj_ir.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_ir_dyn.o lj_ir.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_ir.o lj_ir.c
+CC        lj_opt_mem.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_mem_dyn.o lj_opt_mem.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_mem.o lj_opt_mem.c
+BUILDVM   lj_folddef.h
+host/buildvm -m folddef -o lj_folddef.h lj_opt_fold.c
+CC        lj_opt_fold.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_fold_dyn.o lj_opt_fold.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_fold.o lj_opt_fold.c
+CC        lj_opt_narrow.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_narrow_dyn.o lj_opt_narrow.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_narrow.o lj_opt_narrow.c
+CC        lj_opt_dce.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_dce_dyn.o lj_opt_dce.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_dce.o lj_opt_dce.c
+CC        lj_opt_loop.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_loop_dyn.o lj_opt_loop.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_loop.o lj_opt_loop.c
+CC        lj_opt_split.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_split_dyn.o lj_opt_split.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_split.o lj_opt_split.c
+CC        lj_opt_sink.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_sink_dyn.o lj_opt_sink.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_opt_sink.o lj_opt_sink.c
+CC        lj_mcode.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_mcode_dyn.o lj_mcode.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_mcode.o lj_mcode.c
+CC        lj_snap.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_snap_dyn.o lj_snap.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_snap.o lj_snap.c
+CC        lj_record.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_record_dyn.o lj_record.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_record.o lj_record.c
+CC        lj_crecord.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_crecord_dyn.o lj_crecord.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_crecord.o lj_crecord.c
+BUILDVM   lj_recdef.h
+host/buildvm -m recdef -o lj_recdef.h lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c
+CC        lj_ffrecord.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_ffrecord_dyn.o lj_ffrecord.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_ffrecord.o lj_ffrecord.c
+CC        lj_asm.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_asm_dyn.o lj_asm.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_asm.o lj_asm.c
+CC        lj_trace.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_trace_dyn.o lj_trace.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_trace.o lj_trace.c
+CC        lj_gdbjit.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_gdbjit_dyn.o lj_gdbjit.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_gdbjit.o lj_gdbjit.c
+CC        lj_ctype.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_ctype_dyn.o lj_ctype.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_ctype.o lj_ctype.c
+CC        lj_cdata.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_cdata_dyn.o lj_cdata.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_cdata.o lj_cdata.c
+CC        lj_cconv.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_cconv_dyn.o lj_cconv.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_cconv.o lj_cconv.c
+CC        lj_ccall.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_ccall_dyn.o lj_ccall.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_ccall.o lj_ccall.c
+CC        lj_ccallback.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_ccallback_dyn.o lj_ccallback.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_ccallback.o lj_ccallback.c
+CC        lj_carith.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_carith_dyn.o lj_carith.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_carith.o lj_carith.c
+CC        lj_clib.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_clib_dyn.o lj_clib.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_clib.o lj_clib.c
+CC        lj_cparse.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_cparse_dyn.o lj_cparse.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_cparse.o lj_cparse.c
+CC        lj_lib.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_lib_dyn.o lj_lib.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_lib.o lj_lib.c
+CC        lj_alloc.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_alloc_dyn.o lj_alloc.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lj_alloc.o lj_alloc.c
+CC        lib_aux.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_aux_dyn.o lib_aux.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_aux.o lib_aux.c
+BUILDVM   lj_libdef.h
+host/buildvm -m libdef -o lj_libdef.h lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c
+CC        lib_base.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_base_dyn.o lib_base.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_base.o lib_base.c
+CC        lib_math.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_math_dyn.o lib_math.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_math.o lib_math.c
+CC        lib_bit.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_bit_dyn.o lib_bit.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_bit.o lib_bit.c
+CC        lib_string.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_string_dyn.o lib_string.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_string.o lib_string.c
+CC        lib_table.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_table_dyn.o lib_table.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_table.o lib_table.c
+CC        lib_io.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_io_dyn.o lib_io.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_io.o lib_io.c
+CC        lib_os.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_os_dyn.o lib_os.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_os.o lib_os.c
+CC        lib_package.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_package_dyn.o lib_package.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_package.o lib_package.c
+CC        lib_debug.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_debug_dyn.o lib_debug.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_debug.o lib_debug.c
+CC        lib_jit.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_jit_dyn.o lib_jit.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_jit.o lib_jit.c
+CC        lib_ffi.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_ffi_dyn.o lib_ffi.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_ffi.o lib_ffi.c
+CC        lib_init.o
+gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_init_dyn.o lib_init.c
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o lib_init.o lib_init.c
+AR        libluajit.a
+ar rcus 2>/dev/null libluajit.a lj_vm.o lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o lj_str.o lj_tab.o lj_func.o lj_udata.o lj_meta.o lj_debug.o lj_state.o lj_dispatch.o lj_vmevent.o lj_vmmath.o lj_strscan.o lj_strfmt.o lj_strfmt_num.o lj_api.o lj_profile.o lj_lex.o lj_parse.o lj_bcread.o lj_bcwrite.o lj_load.o lj_ir.o lj_opt_mem.o lj_opt_fold.o lj_opt_narrow.o lj_opt_dce.o lj_opt_loop.o lj_opt_split.o lj_opt_sink.o lj_mcode.o lj_snap.o lj_record.o lj_crecord.o lj_ffrecord.o lj_asm.o lj_trace.o lj_gdbjit.o lj_ctype.o lj_cdata.o lj_cconv.o lj_ccall.o lj_ccallback.o lj_carith.o lj_clib.o lj_cparse.o lj_lib.o lj_alloc.o lib_aux.o lib_base.o lib_math.o lib_bit.o lib_string.o lib_table.o lib_io.o lib_os.o lib_package.o lib_debug.o lib_jit.o lib_ffi.o lib_init.o
+CC        luajit.o
+gcc  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\"lib\" -fno-stack-protector   -c -o luajit.o luajit.c
+BUILDVM   jit/vmdef.lua
+host/buildvm -m vmdef -o jit/vmdef.lua lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c
+DYNLINK   libluajit.so
+gcc   -shared -fPIC -Wl,-soname,libluajit-5.1.so.2   -o libluajit.so lj_vm_dyn.o lj_gc_dyn.o lj_err_dyn.o lj_char_dyn.o lj_bc_dyn.o lj_obj_dyn.o lj_buf_dyn.o lj_str_dyn.o lj_tab_dyn.o lj_func_dyn.o lj_udata_dyn.o lj_meta_dyn.o lj_debug_dyn.o lj_state_dyn.o lj_dispatch_dyn.o lj_vmevent_dyn.o lj_vmmath_dyn.o lj_strscan_dyn.o lj_strfmt_dyn.o lj_strfmt_num_dyn.o lj_api_dyn.o lj_profile_dyn.o lj_lex_dyn.o lj_parse_dyn.o lj_bcread_dyn.o lj_bcwrite_dyn.o lj_load_dyn.o lj_ir_dyn.o lj_opt_mem_dyn.o lj_opt_fold_dyn.o lj_opt_narrow_dyn.o lj_opt_dce_dyn.o lj_opt_loop_dyn.o lj_opt_split_dyn.o lj_opt_sink_dyn.o lj_mcode_dyn.o lj_snap_dyn.o lj_record_dyn.o lj_crecord_dyn.o lj_ffrecord_dyn.o lj_asm_dyn.o lj_trace_dyn.o lj_gdbjit_dyn.o lj_ctype_dyn.o lj_cdata_dyn.o lj_cconv_dyn.o lj_ccall_dyn.o lj_ccallback_dyn.o lj_carith_dyn.o lj_clib_dyn.o lj_cparse_dyn.o lj_lib_dyn.o lj_alloc_dyn.o lib_aux_dyn.o lib_base_dyn.o lib_math_dyn.o lib_bit_dyn.o lib_string_dyn.o lib_table_dyn.o lib_io_dyn.o lib_os_dyn.o lib_package_dyn.o lib_debug_dyn.o lib_jit_dyn.o lib_ffi_dyn.o lib_init_dyn.o -lm -ldl  
+strip libluajit.so
+LINK      luajit
+gcc    -Wl,-E   -o luajit luajit.o libluajit.a -lm -ldl  
+strip luajit
+OK        Successfully built LuaJIT
+make[1]: Leaving directory '/home/niu2x/project/LuaJIT/src'
+==== Successfully built LuaJIT 2.1.0-beta3 ====
