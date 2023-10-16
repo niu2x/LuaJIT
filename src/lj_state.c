@@ -249,11 +249,6 @@ LUA_API void lua_close(lua_State *L)
   setgcrefnull(g->cur_L);
   lj_func_closeuv(L, tvref(L->stack));
   lj_gc_separateudata(g, 1);  /* Separate udata which have GC metamethods. */
-#if LJ_HASJIT
-  G2J(g)->flags &= ~JIT_F_ON;
-  G2J(g)->state = LJ_TRACE_IDLE;
-  lj_dispatch_update(g);
-#endif
   for (i = 0;;) {
     hook_enter(g);
     L->status = LUA_OK;

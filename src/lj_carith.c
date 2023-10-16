@@ -350,13 +350,6 @@ uint64_t lj_carith_check64(lua_State *L, int narg, CTypeID *id)
 
 /* -- 64 bit integer arithmetic helpers ----------------------------------- */
 
-#if LJ_32 && LJ_HASJIT
-/* Signed/unsigned 64 bit multiplication. */
-int64_t lj_carith_mul64(int64_t a, int64_t b)
-{
-  return a * b;
-}
-#endif
 
 /* Unsigned 64 bit division. */
 uint64_t lj_carith_divu64(uint64_t a, uint64_t b)

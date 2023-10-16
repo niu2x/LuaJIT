@@ -2708,11 +2708,6 @@ static void build_subroutines(BuildCtx *ctx)
   |.endif
   |
   |->vm_hotcall:			// Hot call counter underflow.
-  |.if JIT
-  |  mov SAVE_PC, PC
-  |  or PC, 1				// Marker for hot call.
-  |1:
-  |.endif
   |  lea RD, [BASE+NARGS:RD*8-8]
   |  mov L:RB, SAVE_L
   |  mov L:RB->base, BASE
@@ -2722,9 +2717,6 @@ static void build_subroutines(BuildCtx *ctx)
   |  call extern lj_dispatch_call@8	// (lua_State *L, const BCIns *pc)
   |  // ASMFunction returned in eax/rax (RDa).
   |  mov SAVE_PC, 0			// Invalidate for subsequent line hook.
-  |.if JIT
-  |  and PC, -2
-  |.endif
   |  mov BASE, L:RB->base
   |  mov RAa, RDa
   |  mov RD, L:RB->top
@@ -2736,64 +2728,6 @@ static void build_subroutines(BuildCtx *ctx)
   |  jmp RBa
   |
   |->cont_stitch:			// Trace stitching.
-  |.if JIT
-  |  // BASE = base, RC = result, RB = mbase
-  |  mov TRACE:RA, [RB-24]		// Save previous trace.
-  |  mov TMP1, TRACE:RA
-  |  mov TMP3, DISPATCH			// Need one more register.
-  |  mov DISPATCH, MULTRES
-  |  movzx RA, PC_RA
-  |  lea RA, [BASE+RA*8]		// Call base.
-  |  sub DISPATCH, 1
-  |  jz >2
-  |1:  // Move results down.
-  |.if X64
-  |  mov RBa, [RC]
-  |  mov [RA], RBa
-  |.else
-  |  mov RB, [RC]
-  |  mov [RA], RB
-  |  mov RB, [RC+4]
-  |  mov [RA+4], RB
-  |.endif
-  |  add RC, 8
-  |  add RA, 8
-  |  sub DISPATCH, 1
-  |  jnz <1
-  |2:
-  |  movzx RC, PC_RA
-  |  movzx RB, PC_RB
-  |  add RC, RB
-  |  lea RC, [BASE+RC*8-8]
-  |3:
-  |  cmp RC, RA
-  |  ja >9				// More results wanted?
-  |
-  |  mov DISPATCH, TMP3
-  |  mov TRACE:RD, TMP1			// Get previous trace.
-  |  movzx RB, word TRACE:RD->traceno
-  |  movzx RD, word TRACE:RD->link
-  |  cmp RD, RB
-  |  je ->cont_nop			// Blacklisted.
-  |  test RD, RD
-  |  jne =>BC_JLOOP			// Jump to stitched trace.
-  |
-  |  // Stitch a new trace to the previous trace.
-  |  mov [DISPATCH+DISPATCH_J(exitno)], RB
-  |  mov L:RB, SAVE_L
-  |  mov L:RB->base, BASE
-  |  mov FCARG2, PC
-  |  lea FCARG1, [DISPATCH+GG_DISP2J]
-  |  mov aword [DISPATCH+DISPATCH_J(L)], L:RBa
-  |  call extern lj_dispatch_stitch@8	// (jit_State *J, const BCIns *pc)
-  |  mov BASE, L:RB->base
-  |  jmp ->cont_nop
-  |
-  |9:  // Fill up results with nil.
-  |  mov dword [RA+4], LJ_TNIL
-  |  add RA, 8
-  |  jmp <3
-  |.endif
   |
   |->vm_profhook:			// Dispatch target for profiler hook.
 #if LJ_HASPROFILE
@@ -5077,9 +5011,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_JFORI:
   case BC_JFORL:
-#if !LJ_HASJIT
     break;
-#endif
   case BC_FORI:
   case BC_IFORL:
     vk = (op == BC_IFORL || op == BC_JFORL);
@@ -5219,9 +5151,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JITERL:
-#if !LJ_HASJIT
     break;
-#endif
   case BC_IITERL:
     |  ins_AJ	// RA = base, RD = target
     |  lea RA, [BASE+RA*8]
@@ -5317,9 +5247,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JFUNCF:
-#if !LJ_HASJIT
     break;
-#endif
   case BC_IFUNCF:
     |  ins_AD  // BASE = new base, RA = framesize, RD = nargs+1
     |  mov KBASE, [PC-4+PC2PROTO(k)]
@@ -5347,9 +5275,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JFUNCV:
-#if !LJ_HASJIT
     break;
-#endif
     | int3  // NYI: compiled vararg functions
     break;  /* NYI: compiled vararg functions. */
 

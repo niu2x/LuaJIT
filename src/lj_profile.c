@@ -14,10 +14,7 @@
 #include "lj_frame.h"
 #include "lj_debug.h"
 #include "lj_dispatch.h"
-#if LJ_HASJIT
-#include "lj_jit.h"
-#include "lj_trace.h"
-#endif
+
 #include "lj_profile.h"
 
 #include "luajit.h"
@@ -309,12 +306,7 @@ LUA_API void luaJIT_profile_start(lua_State *L, const char *mode,
 	interval = interval * 10 + (*mode++ - '0');
       if (interval <= 0) interval = 1;
       break;
-#if LJ_HASJIT
-    case 'l': case 'f':
-      L2J(L)->prof_mode = m;
-      lj_trace_flushall(L);
-      break;
-#endif
+
     default:  /* Ignore unknown mode chars. */
       break;
     }
@@ -341,10 +333,7 @@ LUA_API void luaJIT_profile_stop(lua_State *L)
     profile_timer_stop(ps);
     g->hookmask &= ~HOOK_PROFILE;
     lj_dispatch_update(g);
-#if LJ_HASJIT
-    G2J(g)->prof_mode = 0;
-    lj_trace_flushall(L);
-#endif
+
     lj_buf_free(g, &ps->sb);
     setmref(ps->sb.b, NULL);
     setmref(ps->sb.e, NULL);

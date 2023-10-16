@@ -72,6 +72,7 @@ ERRDEF(BASERNG,	"base out of range")
 ERRDEF(LVLRNG,	"level out of range")
 ERRDEF(INVLVL,	"invalid level")
 ERRDEF(INVOPT,	"invalid option")
+ERRDEF(NOJIT, "no jit")
 ERRDEF(INVOPTM,	"invalid option " LUA_QS)
 ERRDEF(INVFMT,	"invalid format")
 ERRDEF(SETFENV,	LUA_QL("setfenv") " cannot change environment of given object")
@@ -99,18 +100,6 @@ ERRDEF(STRCAPU,	"unfinished capture")
 ERRDEF(STRFMT,	"invalid option " LUA_QS " to " LUA_QL("format"))
 ERRDEF(STRGSRV,	"invalid replacement value (a %s)")
 ERRDEF(BADMODN,	"name conflict for module " LUA_QS)
-#if LJ_HASJIT
-ERRDEF(JITPROT,	"runtime code generation failed, restricted kernel?")
-#if LJ_TARGET_X86ORX64
-ERRDEF(NOJIT,	"JIT compiler disabled, CPU does not support SSE2")
-#else
-ERRDEF(NOJIT,	"JIT compiler disabled")
-#endif
-#elif defined(LJ_ARCH_NOJIT)
-ERRDEF(NOJIT,	"no JIT compiler for this architecture (yet)")
-#else
-ERRDEF(NOJIT,	"JIT compiler permanently disabled by build option")
-#endif
 ERRDEF(JITOPT,	"unknown or malformed optimization flag " LUA_QS)
 
 /* Lexer/parser errors. */

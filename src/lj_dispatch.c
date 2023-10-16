@@ -19,9 +19,6 @@
 #include "lj_bc.h"
 #include "lj_ff.h"
 #include "lj_strfmt.h"
-#if LJ_HASJIT
-#include "lj_jit.h"
-#endif
 #if LJ_HASFFI
 #include "lj_ccallback.h"
 #endif
@@ -42,9 +39,7 @@ LJ_STATIC_ASSERT(GG_NUM_ASMFF == FF_NUM_ASMFUNC);
 #include <math.h>
 LJ_FUNCA_NORET void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State *L,
 							  lua_State *co);
-#if !LJ_HASJIT
 #define lj_dispatch_stitch	lj_dispatch_ins
-#endif
 #if !LJ_HASPROFILE
 #define lj_dispatch_profile	lj_dispatch_ins
 #endif
@@ -79,18 +74,6 @@ void lj_dispatch_init(GG_State *GG)
 #endif
 }
 
-#if LJ_HASJIT
-/* Initialize hotcount table. */
-void lj_dispatch_init_hotcount(global_State *g)
-{
-  int32_t hotloop = G2J(g)->param[JIT_P_hotloop];
-  HotCount start = (HotCount)(hotloop*HOTCOUNT_LOOP - 1);
-  HotCount *hotcount = G2GG(g)->hotcount;
-  uint32_t i;
-  for (i = 0; i < HOTCOUNT_SIZE; i++)
-    hotcount[i] = start;
-}
-#endif
 
 /* Internal dispatch mode bits. */
 #define DISPMODE_CALL	0x01	/* Override call dispatch. */
@@ -105,11 +88,6 @@ void lj_dispatch_update(global_State *g)
 {
   uint8_t oldmode = g->dispatchmode;
   uint8_t mode = 0;
-#if LJ_HASJIT
-  mode |= (G2J(g)->flags & JIT_F_ON) ? DISPMODE_JIT : 0;
-  mode |= G2J(g)->state != LJ_TRACE_IDLE ?
-	    (DISPMODE_REC|DISPMODE_INS|DISPMODE_CALL) : 0;
-#endif
 #if LJ_HASPROFILE
   mode |= (g->hookmask & HOOK_PROFILE) ? (DISPMODE_PROF|DISPMODE_INS) : 0;
 #endif
@@ -196,44 +174,10 @@ void lj_dispatch_update(global_State *g)
       disp[BC_FUNCV] = f_funcv;
     }
 
-#if LJ_HASJIT
-    /* Reset hotcounts for JIT off to on transition. */
-    if ((mode & DISPMODE_JIT) && !(oldmode & DISPMODE_JIT))
-      lj_dispatch_init_hotcount(g);
-#endif
   }
 }
 
-/* -- JIT mode setting ---------------------------------------------------- */
 
-#if LJ_HASJIT
-/* Set JIT mode for a single prototype. */
-static void setptmode(global_State *g, GCproto *pt, int mode)
-{
-  if ((mode & LUAJIT_MODE_ON)) {  /* (Re-)enable JIT compilation. */
-    pt->flags &= ~PROTO_NOJIT;
-    lj_trace_reenableproto(pt);  /* Unpatch all ILOOP etc. bytecodes. */
-  } else {  /* Flush and/or disable JIT compilation. */
-    if (!(mode & LUAJIT_MODE_FLUSH))
-      pt->flags |= PROTO_NOJIT;
-    lj_trace_flushproto(g, pt);  /* Flush all traces of prototype. */
-  }
-}
-
-/* Recursively set the JIT mode for all children of a prototype. */
-static void setptmode_all(global_State *g, GCproto *pt, int mode)
-{
-  ptrdiff_t i;
-  if (!(pt->flags & PROTO_CHILD)) return;
-  for (i = -(ptrdiff_t)pt->sizekgc; i < 0; i++) {
-    GCobj *o = proto_kgc(pt, i);
-    if (o->gch.gct == ~LJ_TPROTO) {
-      setptmode(g, gco2pt(o), mode);
-      setptmode_all(g, gco2pt(o), mode);
-    }
-  }
-}
-#endif
 
 /* Public API function: control the JIT engine. */
 int luaJIT_setmode(lua_State *L, int idx, int mode)
@@ -245,58 +189,6 @@ int luaJIT_setmode(lua_State *L, int idx, int mode)
   if ((g->hookmask & HOOK_GC))
     lj_err_caller(L, LJ_ERR_NOGCMM);
   switch (mm) {
-#if LJ_HASJIT
-  case LUAJIT_MODE_ENGINE:
-    if ((mode & LUAJIT_MODE_FLUSH)) {
-      lj_trace_flushall(L);
-    } else {
-      if (!(mode & LUAJIT_MODE_ON))
-	G2J(g)->flags &= ~(uint32_t)JIT_F_ON;
-#if LJ_TARGET_X86ORX64
-      else if ((G2J(g)->flags & JIT_F_SSE2))
-	G2J(g)->flags |= (uint32_t)JIT_F_ON;
-      else
-	return 0;  /* Don't turn on JIT compiler without SSE2 support. */
-#else
-      else
-	G2J(g)->flags |= (uint32_t)JIT_F_ON;
-#endif
-      lj_dispatch_update(g);
-    }
-    break;
-  case LUAJIT_MODE_FUNC:
-  case LUAJIT_MODE_ALLFUNC:
-  case LUAJIT_MODE_ALLSUBFUNC: {
-    cTValue *tv = idx == 0 ? frame_prev(L->base-1)-LJ_FR2 :
-		  idx > 0 ? L->base + (idx-1) : L->top + idx;
-    GCproto *pt;
-    if ((idx == 0 || tvisfunc(tv)) && isluafunc(&gcval(tv)->fn))
-      pt = funcproto(&gcval(tv)->fn);  /* Cannot use funcV() for frame slot. */
-    else if (tvisproto(tv))
-      pt = protoV(tv);
-    else
-      return 0;  /* Failed. */
-    if (mm != LUAJIT_MODE_ALLSUBFUNC)
-      setptmode(g, pt, mode);
-    if (mm != LUAJIT_MODE_FUNC)
-      setptmode_all(g, pt, mode);
-    break;
-    }
-  case LUAJIT_MODE_TRACE:
-    if (!(mode & LUAJIT_MODE_FLUSH))
-      return 0;  /* Failed. */
-    lj_trace_flush(G2J(g), idx);
-    break;
-#else
-  case LUAJIT_MODE_ENGINE:
-  case LUAJIT_MODE_FUNC:
-  case LUAJIT_MODE_ALLFUNC:
-  case LUAJIT_MODE_ALLSUBFUNC:
-    UNUSED(idx);
-    if ((mode & LUAJIT_MODE_ON))
-      return 0;  /* Failed. */
-    break;
-#endif
   case LUAJIT_MODE_WRAPCFUNC:
     if ((mode & LUAJIT_MODE_ON)) {
       if (idx != 0) {
@@ -413,19 +305,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State *L, const BCIns *pc)
   setcframe_pc(cf, pc);
   slots = cur_topslot(pt, pc, cframe_multres_n(cf));
   L->top = L->base + slots;  /* Fix top. */
-#if LJ_HASJIT
-  {
-    jit_State *J = G2J(g);
-    if (J->state != LJ_TRACE_IDLE) {
-#ifdef LUA_USE_ASSERT
-      ptrdiff_t delta = L->top - L->base;
-#endif
-      J->L = L;
-      lj_trace_ins(J, pc-1);  /* The interpreter bytecode PC is offset by 1. */
-      lua_assert(L->top - L->base == delta);
-    }
-  }
-#endif
+
   if ((g->hookmask & LUA_MASKCOUNT) && g->hookcount == 0) {
     g->hookcount = g->hookcstart;
     callhook(L, LUA_HOOKCOUNT, -1);
@@ -470,30 +350,8 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State *L, const BCIns *pc)
   GCfunc *fn = curr_func(L);
   BCOp op;
   global_State *g = G(L);
-#if LJ_HASJIT
-  jit_State *J = G2J(g);
-#endif
   int missing = call_init(L, fn);
-#if LJ_HASJIT
-  J->L = L;
-  if ((uintptr_t)pc & 1) {  /* Marker for hot call. */
-#ifdef LUA_USE_ASSERT
-    ptrdiff_t delta = L->top - L->base;
-#endif
-    pc = (const BCIns *)((uintptr_t)pc & ~(uintptr_t)1);
-    lj_trace_hot(J, pc);
-    lua_assert(L->top - L->base == delta);
-    goto out;
-  } else if (J->state != LJ_TRACE_IDLE &&
-	     !(g->hookmask & (HOOK_GC|HOOK_VMEVENT))) {
-#ifdef LUA_USE_ASSERT
-    ptrdiff_t delta = L->top - L->base;
-#endif
-    /* Record the FUNC* bytecodes, too. */
-    lj_trace_ins(J, pc-1);  /* The interpreter bytecode PC is offset by 1. */
-    lua_assert(L->top - L->base == delta);
-  }
-#endif
+
   if ((g->hookmask & LUA_MASKCALL)) {
     int i;
     for (i = 0; i < missing; i++)  /* Add missing parameters. */
@@ -503,36 +361,14 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State *L, const BCIns *pc)
     while (missing-- > 0 && tvisnil(L->top - 1))
       L->top--;
   }
-#if LJ_HASJIT
-out:
-#endif
+
   op = bc_op(pc[-1]);  /* Get FUNC* op. */
-#if LJ_HASJIT
-  /* Use the non-hotcounting variants if JIT is off or while recording. */
-  if ((!(J->flags & JIT_F_ON) || J->state != LJ_TRACE_IDLE) &&
-      (op == BC_FUNCF || op == BC_FUNCV))
-    op = (BCOp)((int)op+(int)BC_IFUNCF-(int)BC_FUNCF);
-#endif
+
   ERRNO_RESTORE
   return makeasmfunc(lj_bc_ofs[op]);  /* Return static dispatch target. */
 }
 
-#if LJ_HASJIT
-/* Stitch a new trace. */
-void LJ_FASTCALL lj_dispatch_stitch(jit_State *J, const BCIns *pc)
-{
-  ERRNO_SAVE
-  lua_State *L = J->L;
-  void *cf = cframe_raw(L->cframe);
-  const BCIns *oldpc = cframe_pc(cf);
-  setcframe_pc(cf, pc);
-  /* Before dispatch, have to bias PC by 1. */
-  L->top = L->base + cur_topslot(curr_proto(L), pc+1, cframe_multres_n(cf));
-  lj_trace_stitch(J, pc-1);  /* Point to the CALL instruction. */
-  setcframe_pc(cf, oldpc);
-  ERRNO_RESTORE
-}
-#endif
+
 
 #if LJ_HASPROFILE
 /* Profile dispatch. */
