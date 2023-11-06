@@ -212,7 +212,7 @@ TARGET_CC= $(STATIC_CC)
 TARGET_STCC= $(STATIC_CC)
 TARGET_DYNCC= $(DYNAMIC_CC)
 TARGET_LD= $(CROSS)$(CC)
-TARGET_AR= $(CROSS)ar rcus
+TARGET_AR= $(CROSS)ar rcus 2>/dev/null
 TARGET_STRIP= $(CROSS)strip
 
 TARGET_LIBPATH= $(or $(PREFIX),/usr/local)/$(or $(MULTILIB),lib)
@@ -312,7 +312,6 @@ ifeq (Windows,$(TARGET_SYS))
   TARGET_XSHLDFLAGS= -shared -Wl,--out-implib,$(TARGET_DLLDOTANAME)
   TARGET_DYNXLDOPTS=
 else
-  TARGET_AR+= 2>/dev/null
 ifeq (,$(shell $(TARGET_CC) -o /dev/null -c -x c /dev/null -fno-stack-protector 2>/dev/null || echo 1))
   TARGET_XCFLAGS+= -fno-stack-protector
 endif
@@ -484,7 +483,7 @@ LJLIB_O= lib_base.o lib_math.o lib_bit.o lib_string.o lib_table.o \
 	 lib_io.o lib_os.o lib_package.o lib_debug.o lib_jit.o lib_ffi.o
 LJLIB_C= $(LJLIB_O:.o=.c)
 
-LJCORE_O= lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o \
+LJCORE_O= lj_assert.o lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o \
 	  lj_str.o lj_tab.o lj_func.o lj_udata.o lj_meta.o lj_debug.o \
 	  lj_state.o lj_dispatch.o lj_vmevent.o lj_vmmath.o lj_strscan.o \
 	  lj_strfmt.o lj_strfmt_num.o lj_api.o lj_profile.o \
