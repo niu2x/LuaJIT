@@ -13,12 +13,6 @@
 #include "lj_gc.h"
 #include "lj_err.h"
 #include "lj_str.h"
-#if LJ_HASFFI
-#include "lj_tab.h"
-#include "lj_ctype.h"
-#include "lj_cdata.h"
-#include "lualib.h"
-#endif
 #include "lj_state.h"
 #include "lj_lex.h"
 #include "lj_parse.h"
@@ -107,31 +101,11 @@ static void lex_number(LexState *ls, TValue *tv)
   save(ls, '\0');
   fmt = lj_strscan_scan((const uint8_t *)ls->sb.buf, tv,
 	  (LJ_DUALNUM ? STRSCAN_OPT_TOINT : STRSCAN_OPT_TONUM) |
-	  (LJ_HASFFI ? (STRSCAN_OPT_LL|STRSCAN_OPT_IMAG) : 0));
+	  (0));
   if (LJ_DUALNUM && fmt == STRSCAN_INT) {
     setitype(tv, LJ_TISNUM);
   } else if (fmt == STRSCAN_NUM) {
     /* Already in correct format. */
-#if LJ_HASFFI
-  } else if (fmt != STRSCAN_ERROR) {
-    lua_State *L = ls->L;
-    GCcdata *cd;
-    lua_assert(fmt == STRSCAN_I64 || fmt == STRSCAN_U64 || fmt == STRSCAN_IMAG);
-    if (!ctype_ctsG(G(L))) {
-      ptrdiff_t oldtop = savestack(L, L->top);
-      luaopen_ffi(L);  /* Load FFI library on-demand. */
-      L->top = restorestack(L, oldtop);
-    }
-    if (fmt == STRSCAN_IMAG) {
-      cd = lj_cdata_new_(L, CTID_COMPLEX_DOUBLE, 2*sizeof(double));
-      ((double *)cdataptr(cd))[0] = 0;
-      ((double *)cdataptr(cd))[1] = numV(tv);
-    } else {
-      cd = lj_cdata_new_(L, fmt==STRSCAN_I64 ? CTID_INT64 : CTID_UINT64, 8);
-      *(uint64_t *)cdataptr(cd) = tv->u64;
-    }
-    lj_parse_keepcdata(ls, tv, cd);
-#endif
   } else {
     lua_assert(fmt == STRSCAN_ERROR);
     lj_lex_error(ls, TK_number, LJ_ERR_XNUMBER);

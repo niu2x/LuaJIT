@@ -332,7 +332,7 @@ void emit_lib(BuildCtx *ctx)
 	else if (!strcmp(buf, "#if LJ_HASJIT"))
 	  ok = 0;
 	else if (!strcmp(buf, "#if LJ_HASFFI"))
-	  ok = LJ_HASFFI;
+	  ok = 0;
 	if (!ok) {
 	  int lvl = 1;
 	  while (fgets(buf, sizeof(buf), fp) != NULL) {

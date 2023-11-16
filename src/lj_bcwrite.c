@@ -10,9 +10,6 @@
 #include "lj_gc.h"
 #include "lj_str.h"
 #include "lj_bc.h"
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#endif
 
 #include "lj_bcdump.h"
 #include "lj_vm.h"
@@ -159,19 +156,6 @@ static void bcwrite_kgc(BCWriteCtx *ctx, GCproto *pt)
     } else if (o->gch.gct == ~LJ_TPROTO) {
       lua_assert((pt->flags & PROTO_CHILD));
       tp = BCDUMP_KGC_CHILD;
-#if LJ_HASFFI
-    } else if (o->gch.gct == ~LJ_TCDATA) {
-      CTypeID id = gco2cd(o)->ctypeid;
-      need = 1+4*5;
-      if (id == CTID_INT64) {
-	tp = BCDUMP_KGC_I64;
-      } else if (id == CTID_UINT64) {
-	tp = BCDUMP_KGC_U64;
-      } else {
-	lua_assert(id == CTID_COMPLEX_DOUBLE);
-	tp = BCDUMP_KGC_COMPLEX;
-      }
-#endif
     } else {
       lua_assert(o->gch.gct == ~LJ_TTAB);
       tp = BCDUMP_KGC_TAB;
@@ -185,16 +169,6 @@ static void bcwrite_kgc(BCWriteCtx *ctx, GCproto *pt)
       bcwrite_block(ctx, strdata(gco2str(o)), gco2str(o)->len);
     } else if (tp == BCDUMP_KGC_TAB) {
       bcwrite_ktab(ctx, gco2tab(o));
-#if LJ_HASFFI
-    } else if (tp != BCDUMP_KGC_CHILD) {
-      cTValue *p = (TValue *)cdataptr(gco2cd(o));
-      bcwrite_uleb128(ctx, p[0].u32.lo);
-      bcwrite_uleb128(ctx, p[0].u32.hi);
-      if (tp == BCDUMP_KGC_COMPLEX) {
-	bcwrite_uleb128(ctx, p[1].u32.lo);
-	bcwrite_uleb128(ctx, p[1].u32.hi);
-      }
-#endif
     }
   }
 }

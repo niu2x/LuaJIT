@@ -17,9 +17,6 @@
 #include "lj_frame.h"
 #include "lj_bc.h"
 #include "lj_ff.h"
-#if LJ_HASFFI
-#include "lj_ccallback.h"
-#endif
 #include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"

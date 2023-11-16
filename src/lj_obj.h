@@ -441,13 +441,9 @@ enum {
 #define setvmstate(g, st)	((g)->vmstate = ~LJ_VMST_##st)
 
 /* Metamethods. ORDER MM */
-#ifdef LJ_HASFFI
-#define MMDEF_FFI(_) _(new)
-#else
 #define MMDEF_FFI(_)
-#endif
 
-#if LJ_52 || LJ_HASFFI
+#if LJ_52 
 #define MMDEF_PAIRS(_) _(pairs) _(ipairs)
 #else
 #define MMDEF_PAIRS(_)

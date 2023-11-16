@@ -12,12 +12,7 @@
 #if LJ_TARGET_MIPS
 /* Need our own global offset table for the dreaded MIPS calling conventions. */
 #define JITGOTDEF(_)
-#if LJ_HASFFI
-#define FFIGOTDEF(_) \
-  _(lj_meta_equal_cd) _(lj_ccallback_enter) _(lj_ccallback_leave)
-#else
 #define FFIGOTDEF(_)
-#endif
 #define GOTDEF(_) \
   _(floor) _(ceil) _(trunc) _(log) _(log10) _(exp) _(sin) _(cos) _(tan) \
   _(asin) _(acos) _(atan) _(sinh) _(cosh) _(tanh) _(frexp) _(modf) _(atan2) \
@@ -101,21 +96,7 @@ LJ_FUNCA void LJ_FASTCALL lj_dispatch_ins(lua_State *L, const BCIns *pc);
 LJ_FUNCA ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State *L, const BCIns*pc);
 LJ_FUNCA void LJ_FASTCALL lj_dispatch_return(lua_State *L, const BCIns *pc);
 
-#if LJ_HASFFI && !defined(_BUILDVM_H)
-/* Save/restore errno and GetLastError() around hooks, exits and recording. */
-#include <errno.h>
-#if LJ_TARGET_WINDOWS
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#define ERRNO_SAVE	int olderr = errno; DWORD oldwerr = GetLastError();
-#define ERRNO_RESTORE	errno = olderr; SetLastError(oldwerr);
-#else
-#define ERRNO_SAVE	int olderr = errno;
-#define ERRNO_RESTORE	errno = olderr;
-#endif
-#else
 #define ERRNO_SAVE
 #define ERRNO_RESTORE
-#endif
 
 #endif

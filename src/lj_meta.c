@@ -70,30 +70,6 @@ cTValue *lj_meta_lookup(lua_State *L, cTValue *o, MMS mm)
   return niltv(L);
 }
 
-#if LJ_HASFFI
-/* Tailcall from C function. */
-int lj_meta_tailcall(lua_State *L, cTValue *tv)
-{
-  TValue *base = L->base;
-  TValue *top = L->top;
-  const BCIns *pc = frame_pc(base-1);  /* Preserve old PC from frame. */
-  copyTV(L, base-1, tv);  /* Replace frame with new object. */
-  top->u32.lo = LJ_CONT_TAILCALL;
-  setframe_pc(top, pc);
-  setframe_gc(top+1, obj2gco(L));  /* Dummy frame object. */
-  setframe_ftsz(top+1, (int)((char *)(top+2) - (char *)base) + FRAME_CONT);
-  L->base = L->top = top+2;
-  /*
-  ** before:   [old_mo|PC]    [... ...]
-  **                         ^base     ^top
-  ** after:    [new_mo|itype] [... ...] [NULL|PC] [dummy|delta]
-  **                                                           ^base/top
-  ** tailcall: [new_mo|PC]    [... ...]
-  **                         ^base     ^top
-  */
-  return 0;
-}
-#endif
 
 /* Setup call to metamethod to be run by Assembler VM. */
 static TValue *mmcall(lua_State *L, ASMFunction cont, cTValue *mo,
@@ -348,45 +324,11 @@ TValue *lj_meta_equal(lua_State *L, GCobj *o1, GCobj *o2, int ne)
   return (TValue *)(intptr_t)ne;
 }
 
-#if LJ_HASFFI
-TValue * LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
-{
-  ASMFunction cont = (bc_op(ins) & 1) ? lj_cont_condf : lj_cont_condt;
-  int op = (int)bc_op(ins) & ~1;
-  TValue tv;
-  cTValue *mo, *o2, *o1 = &L->base[bc_a(ins)];
-  cTValue *o1mm = o1;
-  if (op == BC_ISEQV) {
-    o2 = &L->base[bc_d(ins)];
-    if (!tviscdata(o1mm)) o1mm = o2;
-  } else if (op == BC_ISEQS) {
-    setstrV(L, &tv, gco2str(proto_kgc(curr_proto(L), ~(ptrdiff_t)bc_d(ins))));
-    o2 = &tv;
-  } else if (op == BC_ISEQN) {
-    o2 = &mref(curr_proto(L)->k, cTValue)[bc_d(ins)];
-  } else {
-    lua_assert(op == BC_ISEQP);
-    setitype(&tv, ~bc_d(ins));
-    o2 = &tv;
-  }
-  mo = lj_meta_lookup(L, o1mm, MM_eq);
-  if (LJ_LIKELY(!tvisnil(mo)))
-    return mmcall(L, cont, mo, o1, o2);
-  else
-    return (TValue *)(intptr_t)(bc_op(ins) & 1);
-}
-#endif
 
 /* Helper for ordered comparisons. String compare, __lt/__le metamethods. */
 TValue *lj_meta_comp(lua_State *L, cTValue *o1, cTValue *o2, int op)
 {
-  if (LJ_HASFFI && (tviscdata(o1) || tviscdata(o2))) {
-    ASMFunction cont = (op & 1) ? lj_cont_condf : lj_cont_condt;
-    MMS mm = (op & 2) ? MM_le : MM_lt;
-    cTValue *mo = lj_meta_lookup(L, tviscdata(o1) ? o1 : o2, mm);
-    if (LJ_UNLIKELY(tvisnil(mo))) goto err;
-    return mmcall(L, cont, mo, o1, o2);
-  } else if (LJ_52 || itype(o1) == itype(o2)) {
+   if (LJ_52 || itype(o1) == itype(o2)) {
     /* Never called with two numbers. */
     if (tvisstr(o1) && tvisstr(o2)) {
       int32_t res = lj_str_cmp(strV(o1), strV(o2));

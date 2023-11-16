@@ -18,9 +18,6 @@
 #include "lj_func.h"
 #include "lj_state.h"
 #include "lj_bc.h"
-#if LJ_HASFFI
-#include "lj_ctype.h"
-#endif
 #include "lj_lex.h"
 #include "lj_parse.h"
 #include "lj_vm.h"
@@ -239,16 +236,6 @@ GCstr *lj_parse_keepstr(LexState *ls, const char *str, size_t len)
   return s;
 }
 
-#if LJ_HASFFI
-/* Anchor cdata to avoid GC. */
-void lj_parse_keepcdata(LexState *ls, TValue *tv, GCcdata *cd)
-{
-  /* NOBARRIER: the key is new or kept alive. */
-  lua_State *L = ls->L;
-  setcdataV(L, tv, cd);
-  setboolV(lj_tab_set(L, ls->fs->kt, tv), 1);
-}
-#endif
 
 /* -- Jump list handling -------------------------------------------------- */
 
@@ -521,12 +508,6 @@ static void expr_toreg_nobranch(FuncState *fs, ExpDesc *e, BCReg reg)
     else
 #endif
       ins = BCINS_AD(BC_KNUM, reg, const_num(fs, e));
-#if LJ_HASFFI
-  } else if (e->k == VKCDATA) {
-    fs->flags |= PROTO_FFI;
-    ins = BCINS_AD(BC_KCDATA, reg,
-		   const_gc(fs, obj2gco(cdataV(&e->u.nval)), LJ_TCDATA));
-#endif
   } else if (e->k == VRELOCABLE) {
     setbc_a(bcptr(fs, e), reg);
     goto noins;
@@ -931,7 +912,7 @@ static void bcemit_unop(FuncState *fs, BCOp op, ExpDesc *e)
     if (e->k == VKNIL || e->k == VKFALSE) {
       e->k = VKTRUE;
       return;
-    } else if (expr_isk(e) || (LJ_HASFFI && e->k == VKCDATA)) {
+    } else if (expr_isk(e)) {
       e->k = VKFALSE;
       return;
     } else if (e->k == VJMP) {
@@ -948,17 +929,6 @@ static void bcemit_unop(FuncState *fs, BCOp op, ExpDesc *e)
   } else {
     lua_assert(op == BC_UNM || op == BC_LEN);
     if (op == BC_UNM && !expr_hasjump(e)) {  /* Constant-fold negations. */
-#if LJ_HASFFI
-      if (e->k == VKCDATA) {  /* Fold in-place since cdata is not interned. */
-	GCcdata *cd = cdataV(&e->u.nval);
-	uint64_t *p = (uint64_t *)cdataptr(cd);
-	if (cd->ctypeid == CTID_COMPLEX_DOUBLE)
-	  p[1] ^= U64x(80000000,00000000);
-	else
-	  *p = ~*p+1u;
-	return;
-      } else
-#endif
       if (expr_isnumk(e) && !expr_numiszero(e)) {  /* Avoid folding to -0. */
 	TValue *o = expr_numtv(e);
 	if (tvisint(o)) {
@@ -1892,9 +1862,6 @@ static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
   /* Store new prototype in the constant array of the parent. */
   expr_init(e, VRELOCABLE,
 	    bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
-#if LJ_HASFFI
-  pfs->flags |= (fs.flags & PROTO_FFI);
-#endif
   if (!(pfs->flags & PROTO_CHILD)) {
     if (pfs->flags & PROTO_HAS_RETURN)
       pfs->flags |= PROTO_FIXUP_RETURN;
@@ -2007,7 +1974,7 @@ static void expr_simple(LexState *ls, ExpDesc *v)
 {
   switch (ls->token) {
   case TK_number:
-    expr_init(v, (LJ_HASFFI && tviscdata(&ls->tokenval)) ? VKCDATA : VKNUM, 0);
+    expr_init(v,  VKNUM, 0);
     copyTV(ls->L, &v->u.nval, &ls->tokenval);
     break;
   case TK_string:

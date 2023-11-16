@@ -56,11 +56,7 @@ typedef struct CCallInfo {
 
 #if LJ_SOFTFP
 #define IRCALLCOND_SOFTFP(x)		x
-#if LJ_HASFFI
-#define IRCALLCOND_SOFTFP_FFI(x)	x
-#else
 #define IRCALLCOND_SOFTFP_FFI(x)	NULL
-#endif
 #else
 #define IRCALLCOND_SOFTFP(x)		NULL
 #define IRCALLCOND_SOFTFP_FFI(x)	NULL
@@ -68,23 +64,10 @@ typedef struct CCallInfo {
 
 #define LJ_NEED_FP64	(LJ_TARGET_ARM || LJ_TARGET_PPC || LJ_TARGET_MIPS)
 
-#if LJ_HASFFI && (LJ_SOFTFP || LJ_NEED_FP64)
-#define IRCALLCOND_FP64_FFI(x)		x
-#else
 #define IRCALLCOND_FP64_FFI(x)		NULL
-#endif
 
-#if LJ_HASFFI
-#define IRCALLCOND_FFI(x)		x
-#if LJ_32
-#define IRCALLCOND_FFI32(x)		x
-#else
-#define IRCALLCOND_FFI32(x)		NULL
-#endif
-#else
 #define IRCALLCOND_FFI(x)		NULL
 #define IRCALLCOND_FFI32(x)		NULL
-#endif
 
 #if LJ_SOFTFP
 #define ARG1_FP		2	/* Treat as 2 32 bit arguments. */
@@ -230,42 +213,8 @@ extern double softfp_div(double a, double b);
 extern void softfp_cmp(double a, double b);
 extern double softfp_i2d(int32_t a);
 extern int32_t softfp_d2i(double a);
-#if LJ_HASFFI
-extern double softfp_ui2d(uint32_t a);
-extern double softfp_f2d(float a);
-extern uint32_t softfp_d2ui(double a);
-extern float softfp_d2f(double a);
-extern float softfp_i2f(int32_t a);
-extern float softfp_ui2f(uint32_t a);
-extern int32_t softfp_f2i(float a);
-extern uint32_t softfp_f2ui(float a);
-#endif
 #endif
 
-#if LJ_HASFFI && LJ_NEED_FP64 && !(LJ_TARGET_ARM && LJ_SOFTFP)
-#ifdef __GNUC__
-#define fp64_l2d __floatdidf
-#define fp64_ul2d __floatundidf
-#define fp64_l2f __floatdisf
-#define fp64_ul2f __floatundisf
-#define fp64_d2l __fixdfdi
-#define fp64_d2ul __fixunsdfdi
-#define fp64_f2l __fixsfdi
-#define fp64_f2ul __fixunssfdi
-#else
-#error "Missing fp64 helper definitions for this compiler"
-#endif
-#endif
 
-#if LJ_HASFFI && (LJ_SOFTFP || LJ_NEED_FP64)
-extern double fp64_l2d(int64_t a);
-extern double fp64_ul2d(uint64_t a);
-extern float fp64_l2f(int64_t a);
-extern float fp64_ul2f(uint64_t a);
-extern int64_t fp64_d2l(double a);
-extern uint64_t fp64_d2ul(double a);
-extern int64_t fp64_f2l(float a);
-extern uint64_t fp64_f2ul(float a);
-#endif
 
 #endif

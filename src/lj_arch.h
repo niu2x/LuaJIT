@@ -384,12 +384,6 @@
 #endif
 #endif
 
-/* Disable or enable the FFI extension. */
-#if defined(LUAJIT_DISABLE_FFI) || defined(LJ_ARCH_NOFFI)
-#define LJ_HASFFI		0
-#else
-#define LJ_HASFFI		1
-#endif
 
 #ifndef LJ_ARCH_HASFPU
 #define LJ_ARCH_HASFPU		1
