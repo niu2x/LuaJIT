@@ -17,6 +17,7 @@
 #include "lj_str.h"
 #include "lj_tab.h"
 #include "lj_bc.h"
+#include "lj_bcdef.h"
 
 
 #include "lj_dispatch.h"
