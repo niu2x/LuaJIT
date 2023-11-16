@@ -15,9 +15,6 @@
 #include "lj_frame.h"
 #include "lj_bc.h"
 #include "lj_vm.h"
-#if LJ_HASJIT
-#include "lj_jit.h"
-#endif
 
 /* -- Frames -------------------------------------------------------------- */
 
@@ -99,13 +96,6 @@ static BCPos debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
   }
   pt = funcproto(fn);
   pos = proto_bcpos(pt, ins) - 1;
-#if LJ_HASJIT
-  if (pos > pt->sizebc) {  /* Undo the effects of lj_trace_exit for JLOOP. */
-    GCtrace *T = (GCtrace *)((char *)(ins-1) - offsetof(GCtrace, startins));
-    lua_assert(bc_isret(bc_op(ins[-1])));
-    pos = proto_bcpos(pt, mref(T->startpc, const BCIns));
-  }
-#endif
   return pos;
 }
 

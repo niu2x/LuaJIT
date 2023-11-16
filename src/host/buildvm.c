@@ -210,7 +210,7 @@ static int build_code(BuildCtx *ctx)
     int32_t ofs = dasm_getpclabel(Dst, i);
     if (ofs < 0) return 0x22000000|i;
     ctx->bc_ofs[i] = ofs;
-    if ((LJ_HASJIT ||
+    if ((
 	 !(i == BC_JFORI || i == BC_JFORL || i == BC_JITERL || i == BC_JLOOP ||
 	   i == BC_IFORL || i == BC_IITERL || i == BC_ILOOP)) &&
 	(LJ_HASFFI || i != BC_KCDATA))

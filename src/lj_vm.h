@@ -31,9 +31,6 @@ LJ_ASMF int lj_vm_cpuid(uint32_t f, uint32_t res[4]);
 void lj_vm_cachesync(void *start, void *end);
 #endif
 LJ_ASMF double lj_vm_foldarith(double x, double y, int op);
-#if LJ_HASJIT
-LJ_ASMF double lj_vm_foldfpm(double x, int op);
-#endif
 #if !LJ_ARCH_HASFPU
 /* Declared in lj_obj.h: LJ_ASMF int32_t lj_vm_tobit(double x); */
 #endif
@@ -66,36 +63,6 @@ LJ_ASMF double lj_vm_log2(double);
 #define lj_vm_log2	log2
 #endif
 
-#if LJ_HASJIT
-#if LJ_TARGET_X86ORX64
-LJ_ASMF void lj_vm_floor_sse(void);
-LJ_ASMF void lj_vm_ceil_sse(void);
-LJ_ASMF void lj_vm_trunc_sse(void);
-LJ_ASMF void lj_vm_exp_x87(void);
-LJ_ASMF void lj_vm_exp2_x87(void);
-LJ_ASMF void lj_vm_pow_sse(void);
-LJ_ASMF void lj_vm_powi_sse(void);
-#else
-#if LJ_TARGET_PPC
-#define lj_vm_trunc	trunc
-#else
-LJ_ASMF double lj_vm_trunc(double);
-#if LJ_TARGET_ARM
-LJ_ASMF double lj_vm_trunc_sf(double);
-#endif
-#endif
-LJ_ASMF double lj_vm_powi(double, int32_t);
-#ifdef LUAJIT_NO_EXP2
-LJ_ASMF double lj_vm_exp2(double);
-#else
-#define lj_vm_exp2	exp2
-#endif
-#endif
-LJ_ASMF int32_t LJ_FASTCALL lj_vm_modi(int32_t, int32_t);
-#if LJ_HASFFI
-LJ_ASMF int lj_vm_errno(void);
-#endif
-#endif
 
 /* Continuations for metamethods. */
 LJ_ASMF void lj_cont_cat(void);  /* Continue with concatenation. */

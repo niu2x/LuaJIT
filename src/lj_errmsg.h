@@ -101,18 +101,7 @@ ERRDEF(STRFMTR,	"invalid format (repeated flags)")
 ERRDEF(STRFMTW,	"invalid format (width or precision too long)")
 ERRDEF(STRGSRV,	"invalid replacement value (a %s)")
 ERRDEF(BADMODN,	"name conflict for module " LUA_QS)
-#if LJ_HASJIT
-ERRDEF(JITPROT,	"runtime code generation failed, restricted kernel?")
-#if LJ_TARGET_X86ORX64
-ERRDEF(NOJIT,	"JIT compiler disabled, CPU does not support SSE2")
-#else
-ERRDEF(NOJIT,	"JIT compiler disabled")
-#endif
-#elif defined(LJ_ARCH_NOJIT)
-ERRDEF(NOJIT,	"no JIT compiler for this architecture (yet)")
-#else
 ERRDEF(NOJIT,	"JIT compiler permanently disabled by build option")
-#endif
 ERRDEF(JITOPT,	"unknown or malformed optimization flag " LUA_QS)
 
 /* Lexer/parser errors. */

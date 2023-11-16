@@ -5694,9 +5694,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_JFORI:
   case BC_JFORL:
-#if !LJ_HASJIT
     break;
-#endif
   case BC_FORI:
   case BC_IFORL:
     vk = (op == BC_IFORL || op == BC_JFORL);
@@ -5854,9 +5852,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JITERL:
-#if !LJ_HASJIT
     break;
-#endif
   case BC_IITERL:
     |  ins_AJ	// RA = base, RD = target
     |  lea RA, [BASE+RA*8]
@@ -5952,9 +5948,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JFUNCF:
-#if !LJ_HASJIT
     break;
-#endif
   case BC_IFUNCF:
     |  ins_AD  // BASE = new base, RA = framesize, RD = nargs+1
     |  mov KBASE, [PC-4+PC2PROTO(k)]
@@ -5982,9 +5976,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JFUNCV:
-#if !LJ_HASJIT
     break;
-#endif
     | int3  // NYI: compiled vararg functions
     break;  /* NYI: compiled vararg functions. */
 

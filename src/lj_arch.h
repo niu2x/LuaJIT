@@ -384,13 +384,6 @@
 #endif
 #endif
 
-/* Disable or enable the JIT compiler. */
-#if defined(LUAJIT_DISABLE_JIT) || defined(LJ_ARCH_NOJIT) || defined(LJ_OS_NOJIT)
-#define LJ_HASJIT		0
-#else
-#define LJ_HASJIT		1
-#endif
-
 /* Disable or enable the FFI extension. */
 #if defined(LUAJIT_DISABLE_FFI) || defined(LJ_ARCH_NOFFI)
 #define LJ_HASFFI		0

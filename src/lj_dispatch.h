@@ -8,17 +8,10 @@
 
 #include "lj_obj.h"
 #include "lj_bc.h"
-#if LJ_HASJIT
-#include "lj_jit.h"
-#endif
 
 #if LJ_TARGET_MIPS
 /* Need our own global offset table for the dreaded MIPS calling conventions. */
-#if LJ_HASJIT
-#define JITGOTDEF(_)	_(lj_trace_exit) _(lj_trace_hot)
-#else
 #define JITGOTDEF(_)
-#endif
 #if LJ_HASFFI
 #define FFIGOTDEF(_) \
   _(lj_meta_equal_cd) _(lj_ccallback_enter) _(lj_ccallback_leave)
@@ -77,14 +70,6 @@ typedef struct GG_State {
 #if LJ_TARGET_MIPS
   ASMFunction got[LJ_GOT__MAX];		/* Global offset table. */
 #endif
-#if LJ_HASJIT
-  jit_State J;				/* JIT state. */
-  HotCount hotcount[HOTCOUNT_SIZE];	/* Hot counters. */
-#if LJ_TARGET_ARM
-  /* Ditto for J. */
-  uint8_t align2[(16-sizeof(jit_State)-sizeof(HotCount)*HOTCOUNT_SIZE)&15];
-#endif
-#endif
   ASMFunction dispatch[GG_LEN_DISP];	/* Instruction dispatch tables. */
   BCIns bcff[GG_NUM_ASMFF];		/* Bytecode for ASM fast functions. */
 } GG_State;
@@ -109,9 +94,6 @@ typedef struct GG_State {
 
 /* Dispatch table management. */
 LJ_FUNC void lj_dispatch_init(GG_State *GG);
-#if LJ_HASJIT
-LJ_FUNC void lj_dispatch_init_hotcount(global_State *g);
-#endif
 LJ_FUNC void lj_dispatch_update(global_State *g);
 
 /* Instruction dispatch callback for hooks or when recording. */
