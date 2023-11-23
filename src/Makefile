@@ -14,187 +14,26 @@ MAJVER=  2
 MINVER=  0
 ABIVER=  5.1
 NODOTABIVER= 51
-
-##############################################################################
-#############################  COMPILER OPTIONS  #############################
-##############################################################################
-# These options mainly affect the speed of the JIT compiler itself, not the
-# speed of the JIT-compiled code. Turn any of the optional settings on by
-# removing the '#' in front of them. Make sure you force a full recompile
-# with "make clean", followed by "make" if you change any options.
-#
 DEFAULT_CC = gcc
-#
-# LuaJIT builds as a native 32 or 64 bit binary by default.
 CC= $(DEFAULT_CC)
-#
-# Use this if you want to force a 32 bit build on a 64 bit multilib OS.
-#CC= $(DEFAULT_CC) -m32
-#
-# Since the assembler part does NOT maintain a frame pointer, it's pointless
-# to slow down the C part by not omitting it. Debugging, tracebacks and
-# unwinding are not affected -- the assembler part has frame unwind
-# information and GCC emits it where needed (x64) or with -g (see CCDEBUG).
 CCOPT= -O2 -fomit-frame-pointer
-# Use this if you want to generate a smaller binary (but it's slower):
-#CCOPT= -Os -fomit-frame-pointer
-# Note: it's no longer recommended to use -O3 with GCC 4.x.
-# The I-Cache bloat usually outweighs the benefits from aggressive inlining.
-#
-# Target-specific compiler options:
-#
-# x86 only: it's recommended to compile at least for i686. Better yet,
-# compile for an architecture that has SSE2, too (-msse -msse2).
-#
-# x86/x64 only: For GCC 4.2 or higher and if you don't intend to distribute
-# the binaries to a different machine you could also use: -march=native
-#
 CCOPT_x86= -march=i686
 CCOPT_x64=
 CCOPT_arm=
 CCOPT_ppc=
 CCOPT_ppcspe=
 CCOPT_mips=
-#
 CCDEBUG=
-# Uncomment the next line to generate debug information:
-#CCDEBUG= -g
-#
 CCWARN= -Wall
-# Uncomment the next line to enable more warnings:
-#CCWARN+= -Wextra -Wdeclaration-after-statement -Wredundant-decls -Wshadow -Wpointer-arith
-#
-##############################################################################
-
-##############################################################################
-################################  BUILD MODE  ################################
-##############################################################################
-# The default build mode is mixed mode on POSIX. On Windows this is the same
-# as dynamic mode.
-#
-# Mixed mode creates a static + dynamic library and a statically linked luajit.
 BUILDMODE= mixed
-#
-# Static mode creates a static library and a statically linked luajit.
-#BUILDMODE= static
-#
-# Dynamic mode creates a dynamic library and a dynamically linked luajit.
-# Note: this executable will only run when the library is installed!
-#BUILDMODE= dynamic
-#
-##############################################################################
-
-##############################################################################
-#################################  FEATURES  #################################
-##############################################################################
-# Enable/disable these features as needed, but make sure you force a full
-# recompile with "make clean", followed by "make".
 XCFLAGS=
-#
-# Permanently disable the FFI extension to reduce the size of the LuaJIT
-# executable. But please consider that the FFI library is compiled-in,
-# but NOT loaded by default. It only allocates any memory, if you actually
-# make use of it.
-#XCFLAGS+= -DLUAJIT_DISABLE_FFI
-#
-# Features from Lua 5.2 that are unlikely to break existing code are
-# enabled by default. Some other features that *might* break some existing
-# code (e.g. __pairs or os.execute() return values) can be enabled here.
-# Note: this does not provide full compatibility with Lua 5.2 at this time.
-#XCFLAGS+= -DLUAJIT_ENABLE_LUA52COMPAT
-#
-# Disable the JIT compiler, i.e. turn LuaJIT into a pure interpreter.
-#XCFLAGS+= -DLUAJIT_DISABLE_JIT
-#
-# Some architectures (e.g. PPC) can use either single-number (1) or
-# dual-number (2) mode. Uncomment one of these lines to override the
-# default mode. Please see LJ_ARCH_NUMMODE in lj_arch.h for details.
-#XCFLAGS+= -DLUAJIT_NUMMODE=1
-#XCFLAGS+= -DLUAJIT_NUMMODE=2
-#
-##############################################################################
-
-##############################################################################
-############################  DEBUGGING SUPPORT  #############################
-##############################################################################
-# Enable these options as needed, but make sure you force a full recompile
-# with "make clean", followed by "make".
-# Note that most of these are NOT suitable for benchmarking or release mode!
-#
-# Use the system provided memory allocator (realloc) instead of the
-# bundled memory allocator. This is slower, but sometimes helpful for
-# debugging. This option cannot be enabled on x64, since realloc usually
-# doesn't return addresses in the right address range.
-# OTOH this option is mandatory for Valgrind's memcheck tool on x64 and
-# the only way to get useful results from it for all other architectures.
-#XCFLAGS+= -DLUAJIT_USE_SYSMALLOC
-#
-# This define is required to run LuaJIT under Valgrind. The Valgrind
-# header files must be installed. You should enable debug information, too.
-# Use --suppressions=lj.supp to avoid some false positives.
-#XCFLAGS+= -DLUAJIT_USE_VALGRIND
-#
-# This is the client for the GDB JIT API. GDB 7.0 or higher is required
-# to make use of it. See lj_gdbjit.c for details. Enabling this causes
-# a non-negligible overhead, even when not running under GDB.
-#XCFLAGS+= -DLUAJIT_USE_GDBJIT
-#
-# Turn on assertions for the Lua/C API to debug problems with lua_* calls.
-# This is rather slow -- use only while developing C libraries/embeddings.
-#XCFLAGS+= -DLUA_USE_APICHECK
-#
-# Turn on assertions for the whole LuaJIT VM. This significantly slows down
-# everything. Use only if you suspect a problem with LuaJIT itself.
-#XCFLAGS+= -DLUA_USE_ASSERT
-#
-##############################################################################
-# You probably don't need to change anything below this line!
-##############################################################################
-
-##############################################################################
-# Host system detection.
-##############################################################################
-
-ifeq (Windows,$(findstring Windows,$(OS))$(MSYSTEM)$(TERM))
-  HOST_SYS= Windows
-else
-  HOST_SYS:= $(shell uname -s)
-  ifneq (,$(findstring MINGW,$(HOST_SYS)))
-    HOST_SYS= Windows
-    HOST_MSYS= mingw
-  endif
-  ifneq (,$(findstring MSYS,$(HOST_SYS)))
-    HOST_SYS= Windows
-    HOST_MSYS= mingw
-  endif
-  ifneq (,$(findstring CYGWIN,$(HOST_SYS)))
-    HOST_SYS= Windows
-    HOST_MSYS= cygwin
-  endif
-endif
-
-##############################################################################
-# Flags and options for host and target.
-##############################################################################
-
-# You can override the following variables at the make command line:
-#   CC       HOST_CC       STATIC_CC       DYNAMIC_CC
-#   CFLAGS   HOST_CFLAGS   TARGET_CFLAGS
-#   LDFLAGS  HOST_LDFLAGS  TARGET_LDFLAGS  TARGET_SHLDFLAGS
-#   LIBS     HOST_LIBS     TARGET_LIBS
-#   CROSS    HOST_SYS      TARGET_SYS      TARGET_FLAGS
-#
-# Cross-compilation examples:
-#   make HOST_CC="gcc -m32" CROSS=i586-mingw32msvc- TARGET_SYS=Windows
-#   make HOST_CC="gcc -m32" CROSS=powerpc-linux-gnu-
+HOST_SYS= Linux
 
 CCOPTIONS= $(CCDEBUG) $(CCOPT) $(CCWARN) $(XCFLAGS) $(CFLAGS)
 LDOPTIONS= $(CCDEBUG) $(LDFLAGS)
 
 HOST_CC= $(CC)
 HOST_RM?= rm -f
-# If left blank, minilua is built and used. You can supply an installed
-# copy of (plain) Lua 5.1 or 5.2, plus Lua BitOp. E.g. with: HOST_LUA=lua
 HOST_LUA=
 
 HOST_XCFLAGS= -I.
@@ -236,102 +75,34 @@ TARGET_TESTARCH:=$(shell $(TARGET_CC) $(TARGET_TCFLAGS) -E lj_arch.h -dM)
 ifneq (,$(findstring LJ_TARGET_X64 ,$(TARGET_TESTARCH)))
   TARGET_LJARCH= x64
 else
-ifneq (,$(findstring LJ_TARGET_X86 ,$(TARGET_TESTARCH)))
-  TARGET_LJARCH= x86
-else
-ifneq (,$(findstring LJ_TARGET_ARM ,$(TARGET_TESTARCH)))
-  TARGET_LJARCH= arm
-else
-ifneq (,$(findstring LJ_TARGET_PPC ,$(TARGET_TESTARCH)))
-  TARGET_LJARCH= ppc
-else
-ifneq (,$(findstring LJ_TARGET_PPCSPE ,$(TARGET_TESTARCH)))
-  TARGET_LJARCH= ppcspe
-else
-ifneq (,$(findstring LJ_TARGET_MIPS ,$(TARGET_TESTARCH)))
-  ifneq (,$(findstring MIPSEL ,$(TARGET_TESTARCH)))
-    TARGET_ARCH= -D__MIPSEL__=1
+  ifneq (,$(findstring LJ_TARGET_X86 ,$(TARGET_TESTARCH)))
+    TARGET_LJARCH= x86
+  else
+    $(error Unsupported target architecture)
   endif
-  TARGET_LJARCH= mips
-else
-  $(error Unsupported target architecture)
-endif
-endif
-endif
-endif
-endif
-endif
-
-ifneq (,$(findstring LJ_TARGET_PS3 1,$(TARGET_TESTARCH)))
-  TARGET_SYS= PS3
-  TARGET_ARCH+= -D__CELLOS_LV2__
-  TARGET_XCFLAGS+= -DLUAJIT_USE_SYSMALLOC
 endif
 
 TARGET_XCFLAGS+= $(CCOPT_$(TARGET_LJARCH))
 TARGET_ARCH+= $(patsubst %,-DLUAJIT_TARGET=LUAJIT_ARCH_%,$(TARGET_LJARCH))
 
-ifneq (,$(PREFIX))
-ifneq (/usr/local,$(PREFIX))
-  TARGET_XCFLAGS+= -DLUA_ROOT=\"$(PREFIX)\"
-  ifneq (/usr,$(PREFIX))
-    TARGET_DYNXLDOPTS= -Wl,-rpath,$(TARGET_LIBPATH)
-  endif
-endif
-endif
-ifneq (,$(MULTILIB))
-  TARGET_XCFLAGS+= -DLUA_MULTILIB=\"$(MULTILIB)\"
-endif
-ifneq (,$(LMULTILIB))
-  TARGET_XCFLAGS+= -DLUA_LMULTILIB=\"$(LMULTILIB)\"
-endif
-
-##############################################################################
-# Target system detection.
-##############################################################################
 
 TARGET_SYS?= $(HOST_SYS)
 ifeq (Windows,$(TARGET_SYS))
-  TARGET_STRIP+= --strip-unneeded
-  TARGET_XSHLDFLAGS= -shared -Wl,--out-implib,$(TARGET_DLLDOTANAME)
-  TARGET_DYNXLDOPTS=
 else
   TARGET_AR+= 2>/dev/null
-ifeq (,$(shell $(TARGET_CC) -o /dev/null -c -x c /dev/null -fno-stack-protector 2>/dev/null || echo 1))
-  TARGET_XCFLAGS+= -fno-stack-protector
-endif
-ifeq (Darwin,$(TARGET_SYS))
-  ifeq (,$(MACOSX_DEPLOYMENT_TARGET))
-    $(error missing: export MACOSX_DEPLOYMENT_TARGET=XX.YY)
+  ifeq (,$(shell $(TARGET_CC) -o /dev/null -c -x c /dev/null -fno-stack-protector 2>/dev/null || echo 1))
+    TARGET_XCFLAGS+= -fno-stack-protector
   endif
-  TARGET_STRIP+= -x
-  TARGET_XSHLDFLAGS= -dynamiclib -single_module -undefined dynamic_lookup -fPIC
-  TARGET_DYNXLDOPTS=
-  TARGET_XSHLDFLAGS+= -install_name $(TARGET_DYLIBPATH) -compatibility_version $(MAJVER).$(MINVER) -current_version $(MAJVER).$(MINVER).255
-  ifeq (x64,$(TARGET_LJARCH))
-    TARGET_XLDFLAGS+= -pagezero_size 10000 -image_base 100000000
-    TARGET_XSHLDFLAGS+= -image_base 7fff04c4a000
-  endif
-else
-ifeq (iOS,$(TARGET_SYS))
-  TARGET_STRIP+= -x
-  TARGET_XSHLDFLAGS= -dynamiclib -single_module -undefined dynamic_lookup -fPIC
-  TARGET_DYNXLDOPTS=
-  TARGET_XSHLDFLAGS+= -install_name $(TARGET_DYLIBPATH) -compatibility_version $(MAJVER).$(MINVER) -current_version $(MAJVER).$(MINVER).255
-else
-  ifneq (SunOS,$(TARGET_SYS))
-    ifneq (PS3,$(TARGET_SYS))
+  ifeq (Darwin,$(TARGET_SYS))
+  else
+    ifeq (iOS,$(TARGET_SYS))
+    else
       TARGET_XLDFLAGS+= -Wl,-E
+      ifeq (Linux,$(TARGET_SYS))
+        TARGET_XLIBS+= -ldl
+      endif
     endif
   endif
-  ifeq (Linux,$(TARGET_SYS))
-    TARGET_XLIBS+= -ldl
-  endif
-  ifeq (GNU/kFreeBSD,$(TARGET_SYS))
-    TARGET_XLIBS+= -ldl
-  endif
-endif
-endif
 endif
 
 ifneq ($(HOST_SYS),$(TARGET_SYS))
