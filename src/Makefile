@@ -105,33 +105,6 @@ else
   endif
 endif
 
-ifneq ($(HOST_SYS),$(TARGET_SYS))
-  ifeq (Windows,$(TARGET_SYS))
-    HOST_XCFLAGS+= -malign-double -DLUAJIT_OS=LUAJIT_OS_WINDOWS
-  else
-  ifeq (Linux,$(TARGET_SYS))
-    HOST_XCFLAGS+= -DLUAJIT_OS=LUAJIT_OS_LINUX
-  else
-  ifeq (Darwin,$(TARGET_SYS))
-    HOST_XCFLAGS+= -DLUAJIT_OS=LUAJIT_OS_OSX
-  else
-  ifeq (iOS,$(TARGET_SYS))
-    HOST_XCFLAGS+= -DLUAJIT_OS=LUAJIT_OS_OSX
-  else
-    HOST_XCFLAGS+= -DLUAJIT_OS=LUAJIT_OS_OTHER
-  endif
-  endif
-  endif
-  endif
-endif
-
-ifneq (,$(CCDEBUG))
-  TARGET_STRIP= @:
-endif
-
-##############################################################################
-# Files and pathnames.
-##############################################################################
 
 MINILUA_O= host/minilua.o
 MINILUA_LIBS= -lm
@@ -153,75 +126,45 @@ DASM_ARCH= $(TARGET_LJARCH)
 ifneq (,$(findstring LJ_ARCH_BITS 64,$(TARGET_TESTARCH)))
   DASM_AFLAGS+= -D P64
 endif
-ifneq (,$(findstring LJ_HASJIT 1,$(TARGET_TESTARCH)))
-  DASM_AFLAGS+= -D JIT
-endif
-ifneq (,$(findstring LJ_HASFFI 1,$(TARGET_TESTARCH)))
-  DASM_AFLAGS+= -D FFI
-endif
+
 ifneq (,$(findstring LJ_DUALNUM 1,$(TARGET_TESTARCH)))
   DASM_AFLAGS+= -D DUALNUM
 endif
+
 ifneq (,$(findstring LJ_ARCH_HASFPU 1,$(TARGET_TESTARCH)))
   DASM_AFLAGS+= -D FPU
   TARGET_ARCH+= -DLJ_ARCH_HASFPU=1
 else
   TARGET_ARCH+= -DLJ_ARCH_HASFPU=0
 endif
+
 ifeq (,$(findstring LJ_ABI_SOFTFP 1,$(TARGET_TESTARCH)))
   DASM_AFLAGS+= -D HFABI
   TARGET_ARCH+= -DLJ_ABI_SOFTFP=0
 else
   TARGET_ARCH+= -DLJ_ABI_SOFTFP=1
 endif
+
 ifneq (,$(findstring LJ_NO_UNWIND 1,$(TARGET_TESTARCH)))
   DASM_AFLAGS+= -D NO_UNWIND
   TARGET_ARCH+= -DLUAJIT_NO_UNWIND
 endif
+
 DASM_AFLAGS+= -D VER=$(subst LJ_ARCH_VERSION_,,$(filter LJ_ARCH_VERSION_%,$(subst LJ_ARCH_VERSION ,LJ_ARCH_VERSION_,$(TARGET_TESTARCH))))
-ifeq (Windows,$(TARGET_SYS))
-  DASM_AFLAGS+= -D WIN
-endif
+
 ifeq (x86,$(TARGET_LJARCH))
   ifneq (,$(findstring __SSE2__ 1,$(TARGET_TESTARCH)))
     DASM_AFLAGS+= -D SSE
   endif
 else
-ifeq (x64,$(TARGET_LJARCH))
-  DASM_ARCH= x86
-else
-ifeq (arm,$(TARGET_LJARCH))
-  ifeq (iOS,$(TARGET_SYS))
-    DASM_AFLAGS+= -D IOS
+  ifeq (x64,$(TARGET_LJARCH))
+    DASM_ARCH= x86
   endif
-else
-ifeq (ppc,$(TARGET_LJARCH))
-  ifneq (,$(findstring LJ_ARCH_SQRT 1,$(TARGET_TESTARCH)))
-    DASM_AFLAGS+= -D SQRT
-  endif
-  ifneq (,$(findstring LJ_ARCH_ROUND 1,$(TARGET_TESTARCH)))
-    DASM_AFLAGS+= -D ROUND
-  endif
-  ifneq (,$(findstring LJ_ARCH_PPC64 1,$(TARGET_TESTARCH)))
-    DASM_AFLAGS+= -D GPR64
-  endif
-  ifeq (PS3,$(TARGET_SYS))
-    DASM_AFLAGS+= -D PPE -D TOC
-  endif
-endif
-endif
-endif
 endif
 
 DASM_FLAGS= $(DASM_XFLAGS) $(DASM_AFLAGS)
 DASM_DASC= vm_$(DASM_ARCH).dasc
 
-GIT= git
-ifeq (Windows,$(HOST_SYS)$(HOST_MSYS))
-  GIT_RELVER= if exist ..\.git ( $(GIT) show -s --format=%%ct >luajit_relver.txt ) else ( type ..\.relver >luajit_relver.txt )
-else
-  GIT_RELVER= [ -e ../.git ] && $(GIT) show -s --format=%ct >luajit_relver.txt 2>/dev/null || cat ../.relver >luajit_relver.txt 2>/dev/null || :
-endif
 GIT_DEP= $(wildcard ../.git/HEAD ../.git/refs/heads/*)
 
 BUILDVM_O= host/buildvm.o host/buildvm_asm.o host/buildvm_peobj.o \
@@ -257,10 +200,9 @@ LIB_VMDEFP= $(LIB_VMDEF)
 
 LUAJIT_O= luajit.o
 LUAJIT_A= libluajit.a
-LUAJIT_SO= libluajit.so
 LUAJIT_T= luajit
 
-ALL_T= $(LUAJIT_T) $(LUAJIT_A) $(LUAJIT_SO) $(HOST_T)
+ALL_T= $(LUAJIT_T) $(LUAJIT_A)  $(HOST_T)
 ALL_HDRGEN= lj_bcdef.h lj_ffdef.h lj_libdef.h lj_recdef.h lj_folddef.h \
 	    host/buildvm_arch.h luajit.h
 ALL_GEN= $(LJVM_S) $(ALL_HDRGEN) luajit_relver.txt $(LIB_VMDEFP)
@@ -273,74 +215,12 @@ ALL_RM= $(ALL_T) $(ALL_GEN) *.o host/*.o $(WIN_RM)
 
 # Mixed mode defaults.
 TARGET_O= $(LUAJIT_A)
-TARGET_T= $(LUAJIT_T) $(LUAJIT_SO)
-TARGET_DEP= $(LIB_VMDEF) $(LUAJIT_SO)
+TARGET_T= $(LUAJIT_T) 
+TARGET_DEP= $(LIB_VMDEF)
 
-ifeq (Windows,$(TARGET_SYS))
-  TARGET_DYNCC= $(STATIC_CC)
-  LJVM_MODE= peobj
-  LJVM_BOUT= $(LJVM_O)
-  LUAJIT_T= luajit.exe
-  ifeq (cygwin,$(HOST_MSYS))
-    LUAJIT_SO= cyg$(TARGET_DLLNAME)
-  else
-    LUAJIT_SO= $(TARGET_DLLNAME)
-  endif
-  # Mixed mode is not supported on Windows. And static mode doesn't work well.
-  # C modules cannot be loaded, because they bind to lua51.dll.
-  ifneq (static,$(BUILDMODE))
-    BUILDMODE= dynamic
-    TARGET_XCFLAGS+= -DLUA_BUILD_AS_DLL
-  endif
-endif
-ifeq (Darwin,$(TARGET_SYS))
-  LJVM_MODE= machasm
-endif
-ifeq (iOS,$(TARGET_SYS))
-  LJVM_MODE= machasm
-endif
-ifeq (SunOS,$(TARGET_SYS))
-  BUILDMODE= static
-endif
-ifeq (PS3,$(TARGET_SYS))
-  BUILDMODE= static
-endif
-
-ifeq (Windows,$(HOST_SYS))
-  MINILUA_T= host/minilua.exe
-  BUILDVM_T= host/buildvm.exe
-  ifeq (,$(HOST_MSYS))
-    MINILUA_X= host\minilua
-    BUILDVM_X= host\buildvm
-    ALL_RM:= $(subst /,\,$(ALL_RM))
-    HOST_RM= del
-  endif
-endif
-
-ifeq (static,$(BUILDMODE))
-  TARGET_DYNCC= @:
-  TARGET_T= $(LUAJIT_T)
-  TARGET_DEP= $(LIB_VMDEF)
-else
-ifeq (dynamic,$(BUILDMODE))
-  ifneq (Windows,$(TARGET_SYS))
-    TARGET_CC= $(DYNAMIC_CC)
-  endif
-  TARGET_DYNCC= @:
-  LJVMCORE_DYNO= $(LJVMCORE_O)
-  TARGET_O= $(LUAJIT_SO)
-  TARGET_XLDFLAGS+= $(TARGET_DYNXLDOPTS)
-else
-ifeq (Darwin,$(TARGET_SYS))
-  TARGET_DYNCC= @:
-  LJVMCORE_DYNO= $(LJVMCORE_O)
-endif
-ifeq (iOS,$(TARGET_SYS))
-  TARGET_DYNCC= @:
-  LJVMCORE_DYNO= $(LJVMCORE_O)
-endif
-endif
-endif
+TARGET_DYNCC= @:
+TARGET_T= $(LUAJIT_T)
+TARGET_DEP= $(LIB_VMDEF)
 
 Q= @
 E= @echo
@@ -351,26 +231,25 @@ E= @echo
 # Make targets.
 ##############################################################################
 
-default all:	$(TARGET_T)
-
+default:	$(TARGET_T)
 clean:
 	$(HOST_RM) $(ALL_RM)
 
-depend:
-	@for file in $(ALL_HDRGEN); do \
-	  test -f $$file || touch $$file; \
-	  done
-	@$(HOST_CC) $(HOST_ACFLAGS) -MM *.c host/*.c | \
-	  sed -e "s| [^ ]*/dasm_\S*\.h||g" \
-	      -e "s|^\([^l ]\)|host/\1|" \
-	      -e "s| lj_target_\S*\.h| lj_target_*.h|g" \
-	      -e "s| lj_emit_\S*\.h| lj_emit_*.h|g" \
-	      -e "s| lj_asm_\S*\.h| lj_asm_*.h|g" >Makefile.dep
-	@for file in $(ALL_HDRGEN); do \
-	  test -s $$file || $(HOST_RM) $$file; \
-	  done
+# depend:
+# 	@for file in $(ALL_HDRGEN); do \
+# 	  test -f $$file || touch $$file; \
+# 	  done
+# 	@$(HOST_CC) $(HOST_ACFLAGS) -MM *.c host/*.c | \
+# 	  sed -e "s| [^ ]*/dasm_\S*\.h||g" \
+# 	      -e "s|^\([^l ]\)|host/\1|" \
+# 	      -e "s| lj_target_\S*\.h| lj_target_*.h|g" \
+# 	      -e "s| lj_emit_\S*\.h| lj_emit_*.h|g" \
+# 	      -e "s| lj_asm_\S*\.h| lj_asm_*.h|g" >Makefile.dep
+# 	@for file in $(ALL_HDRGEN); do \
+# 	  test -s $$file || $(HOST_RM) $$file; \
+# 	  done
 
-.PHONY: default all clean depend
+.PHONY: default clean depend
 
 ##############################################################################
 # Rules for generated files.
@@ -380,10 +259,6 @@ $(MINILUA_T): $(MINILUA_O)
 	$(E) "HOSTLINK  $@"
 	$(Q)$(HOST_CC) $(HOST_ALDFLAGS) -o $@ $(MINILUA_O) $(MINILUA_LIBS) $(HOST_ALIBS)
 
-luajit.h: $(MINILUA_DEP) $(GIT_DEP) luajit_rolling.h
-	$(E) "VERSION   $@"
-	$(Q)$(GIT_RELVER)
-	$(Q)$(HOST_LUA) host/genversion.lua
 
 host/buildvm_arch.h: $(DASM_DASC) $(MINILUA_DEP) lj_arch.h lua.h luaconf.h
 	$(E) "DYNASM    $@"
@@ -455,11 +330,6 @@ $(LUAJIT_A): $(LJVMCORE_O)
 	$(E) "AR        $@"
 	$(Q)$(TARGET_AR) $@ $(LJVMCORE_O)
 
-# The dependency on _O, but linking with _DYNO is intentional.
-$(LUAJIT_SO): $(LJVMCORE_O)
-	$(E) "DYNLINK   $@"
-	$(Q)$(TARGET_LD) $(TARGET_ASHLDFLAGS) -o $@ $(LJVMCORE_DYNO) $(TARGET_ALIBS)
-	$(Q)$(TARGET_STRIP) $@
 
 $(LUAJIT_T): $(TARGET_O) $(LUAJIT_O) $(TARGET_DEP)
 	$(E) "LINK      $@"
