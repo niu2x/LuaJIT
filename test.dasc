@@ -1,0 +1,11 @@
+|.arch x64
+|.section code_op, code_sub
+|.actionlist build_actionlist
+|.globals GLOB_
+|.globalnames globnames
+|.externnames extnames
+
+
+static void test() {
+	
+}
