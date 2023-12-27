@@ -13,7 +13,7 @@
 #include <stdio.h>
 
 #include "lua.h"
-
+#define luaL_reg  luaL_Reg
 
 /* extra error code for `luaL_load' */
 #define LUA_ERRFILE     (LUA_ERRERR+1)
