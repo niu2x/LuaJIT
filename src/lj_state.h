@@ -34,4 +34,8 @@ LJ_FUNC lua_State *lj_state_newstate(lua_Alloc f, void *ud);
 
 #define LJ_ALLOCF_INTERNAL	((lua_Alloc)(void *)(uintptr_t)(1237<<4))
 
+
+GCproto *get_curr_proto(lua_State *L);
+
+
 #endif

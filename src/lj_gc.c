@@ -872,6 +872,10 @@ void lj_gc_barriertrace(global_State *g, uint32_t traceno)
 /* Call pluggable memory allocator to allocate or resize a fragment. */
 void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
 {
+  if(L->status == LUA_OK){
+    get_curr_proto(L);
+  }
+
   global_State *g = G(L);
   lj_assertG((osz == 0) == (p == NULL), "realloc API violation");
   p = g->allocf(g->allocd, p, osz, nsz);
@@ -887,6 +891,10 @@ void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
 /* Allocate new GC object and link it to the root set. */
 void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size)
 {
+  if(L->status == LUA_OK){
+    get_curr_proto(L);
+  }
+  
   global_State *g = G(L);
   GCobj *o = (GCobj *)g->allocf(g->allocd, NULL, 0, size);
   if (o == NULL)

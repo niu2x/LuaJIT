@@ -7,6 +7,7 @@
 #define _LJ_GC_H
 
 #include "lj_obj.h"
+#include "lj_state.h"
 
 /* Garbage collector states. Order matters. */
 enum {
@@ -118,6 +119,11 @@ LJ_FUNC void *lj_mem_grow(lua_State *L, void *p,
 
 static LJ_AINLINE void lj_mem_free(global_State *g, void *p, size_t osize)
 {
+  lua_State* L = mainthread(g);
+  if(L->status == LUA_OK){
+    get_curr_proto(L);
+  }
+
   g->gc.total -= (GCSize)osize;
   g->allocf(g->allocd, p, osize, 0);
 }

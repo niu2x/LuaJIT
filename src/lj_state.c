@@ -333,3 +333,29 @@ void LJ_FASTCALL lj_state_free(global_State *g, lua_State *L)
   lj_mem_freet(g, L);
 }
 
+
+
+
+GCproto *get_curr_proto(lua_State *L)
+{
+  cTValue *frame, *bot = tvref(L->stack)+LJ_FR2;
+  for ( frame = L->base-1; frame > bot; ) {
+    GCfunc *func = frame_func(frame);
+    if(func){
+      GCproto *pt = funcproto(func);
+      // GCstr *name = proto_chunkname(pt);
+      if(isluafunc(func)){
+        // printf("XXPC %p %d %s %d\n", func, isluafunc(func), strdata(name), pt->firstline);
+        return pt;
+      }
+    }
+    if (frame_islua(frame)) {
+      frame = frame_prevl(frame);
+    } else {
+      frame = frame_prevd(frame);
+    }
+  }
+  return NULL;  /* Level not found. */
+}
+
+
