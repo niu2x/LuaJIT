@@ -229,6 +229,9 @@ LUA_API lua_State *lua_newstate(lua_Alloc allocf, void *allocd)
   g->strempty.gct = ~LJ_TSTR;
   g->allocf = allocf;
   g->allocd = allocd;
+  g->mem_log = NULL;
+  g->mem_log_alloc = 0;
+  g->mem_log_nr = 0;
   g->prng = prng;
 #ifndef LUAJIT_USE_SYSMALLOC
   if (allocf == lj_alloc_f) {
@@ -359,3 +362,7 @@ GCproto *get_curr_proto(lua_State *L)
 }
 
 
+
+void mem_log(GCproto *pt, global_State *g, int delta, void *addr) {
+  
+}

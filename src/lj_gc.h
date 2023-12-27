@@ -119,7 +119,15 @@ LJ_FUNC void *lj_mem_grow(lua_State *L, void *p,
 
 static LJ_AINLINE void lj_mem_free(global_State *g, void *p, size_t osize)
 {
+
   lua_State* L = mainthread(g);
+  GCproto * pt = NULL;
+  if(L->status == LUA_OK){
+    pt = get_curr_proto(L);
+  }
+
+  mem_log(pt, g, -osize, p);
+  
   if(L->status == LUA_OK){
     get_curr_proto(L);
   }

@@ -872,11 +872,18 @@ void lj_gc_barriertrace(global_State *g, uint32_t traceno)
 /* Call pluggable memory allocator to allocate or resize a fragment. */
 void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
 {
+  GCproto * pt = NULL;
   if(L->status == LUA_OK){
-    get_curr_proto(L);
+    pt = get_curr_proto(L);
+    // if(pt){
+      // GCstr *name = proto_chunkname(pt);
+      // printf("PT %s:%d\n", strdata(name), pt->firstline);
+    // }
   }
-
   global_State *g = G(L);
+
+  mem_log(pt, g, -osz, p);
+
   lj_assertG((osz == 0) == (p == NULL), "realloc API violation");
   p = g->allocf(g->allocd, p, osz, nsz);
   if (p == NULL && nsz > 0)
@@ -885,16 +892,25 @@ void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
   lj_assertG(checkptrGC(p),
 	     "allocated memory address %p outside required range", p);
   g->gc.total = (g->gc.total - osz) + nsz;
+
+  mem_log(pt, g, nsz, p);
   return p;
 }
 
 /* Allocate new GC object and link it to the root set. */
 void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size)
 {
+  GCproto * pt = NULL;
   if(L->status == LUA_OK){
-    get_curr_proto(L);
+    pt = get_curr_proto(L);
+    // if(pt){
+      // GCstr *name = proto_chunkname(pt);
+      // printf("PT %s:%d\n", strdata(name), pt->firstline);
+    // }
   }
+
   
+
   global_State *g = G(L);
   GCobj *o = (GCobj *)g->allocf(g->allocd, NULL, 0, size);
   if (o == NULL)
@@ -905,6 +921,7 @@ void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size)
   setgcrefr(o->gch.nextgc, g->gc.root);
   setgcref(g->gc.root, o);
   newwhite(g, o);
+  mem_log(pt, g, size, o);
   return o;
 }
 

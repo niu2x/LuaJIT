@@ -627,6 +627,8 @@ typedef struct StrInternState {
   LJ_ALIGN(8) uint64_t seed;	/* Random string seed. */
 } StrInternState;
 
+struct MemLog {};
+
 /* Global state, shared by all threads of a Lua universe. */
 typedef struct global_State {
   lua_Alloc allocf;	/* Memory allocator. */
@@ -657,6 +659,9 @@ typedef struct global_State {
   MRef ctype_state;	/* Pointer to C type state. */
   PRNGState prng;	/* Global PRNG state. */
   GCRef gcroot[GCROOT_MAX];  /* GC roots. */
+  struct MemLog *mem_log;
+  int32_t mem_log_nr;
+  int32_t mem_log_alloc;
 } global_State;
 
 #define mainthread(g)	(&gcref(g->mainthref)->th)
