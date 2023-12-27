@@ -634,6 +634,13 @@ struct MemLogItem {
   MSize size;
   UT_hash_handle hh;
 };
+
+struct ProtoInfo {
+  GCproto *pt;
+  char name[64];
+  UT_hash_handle hh;
+};
+
 // struct MemLog {
 //   struct MemLogItem *base;
 //   int32_t nr;
@@ -672,6 +679,7 @@ typedef struct global_State {
   GCRef gcroot[GCROOT_MAX];  /* GC roots. */
   // struct MemLog mem_log;
   struct MemLogItem *mem_logs;
+  struct ProtoInfo *proto_infos;
 } global_State;
 
 #define mainthread(g)	(&gcref(g->mainthref)->th)

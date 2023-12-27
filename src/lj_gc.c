@@ -96,6 +96,11 @@ static void gc_mark_gcroot(global_State *g)
   for (i = 0; i < GCROOT_MAX; i++)
     if (gcref(g->gcroot[i]) != NULL)
       gc_markobj(g, gcref(g->gcroot[i]));
+  
+  // struct MemLogItem *cur, *tmp;
+  // HASH_ITER(hh, (g->mem_logs), cur, tmp) {
+    // gc_markobj(g, cur->pt);
+  // }  
 }
 
 /* Start a GC cycle and mark the root set. */

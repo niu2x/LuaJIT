@@ -5,7 +5,7 @@
 ** Portions taken verbatim or adapted from the Lua interpreter.
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 */
-
+#include <stdio.h>
 #define lj_state_c
 #define LUA_CORE
 
@@ -234,6 +234,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc allocf, void *allocd)
   // g->mem_log.alloc = 0;
   // g->mem_log.nr = 0;
   g->mem_logs = NULL;
+  g->proto_infos = NULL;
+
   g->prng = prng;
 #ifndef LUAJIT_USE_SYSMALLOC
   if (allocf == lj_alloc_f) {
@@ -382,7 +384,7 @@ void mem_log(GCproto *pt, global_State *g, int delta, void *addr) {
     }
   }
 
-  mem_info(g);
+  // mem_info(g);
 }
 
 
@@ -392,21 +394,22 @@ struct MemInfo {
   UT_hash_handle hh;
 };
 
-static char *print_pt(GCproto *pt) {
-  if(pt){
-    GCstr *name = proto_chunkname(pt);
-    printf("Proto(%p %s:%d)", pt, strdata(name), pt->firstline);
+static void print_pt(FILE *fp, GCproto *pt, global_State *g) {
+  struct ProtoInfo *found = NULL;
+  HASH_FIND_PTR((g->proto_infos), &pt, found); 
+  if(found != NULL){
+    fprintf(fp, "Proto(%p %s),", pt, found->name);
   }
   else{
-    printf("Proto(%p unknown)", pt);
+    fprintf(fp, "Proto(%p),", pt);
   }
 }
 
 void mem_info(global_State *g) {
-  printf("## MemInfo\n");
+  FILE *fp = fopen("luajit_meminfo.csv", "wt");
+  fprintf(fp, "Proto,Memory\n");
 
   struct MemInfo *infos = NULL;
-
   struct MemLogItem *cur, *tmp;
   HASH_ITER(hh, (g->mem_logs), cur, tmp) {
 
@@ -428,10 +431,11 @@ void mem_info(global_State *g) {
   struct MemInfo *tmp_info;
 
   HASH_ITER(hh, infos, current_info, tmp_info) {
-    print_pt(current_info->pt);
-    printf("%d\n", current_info->size);  
+    print_pt(fp, current_info->pt, g);
+    fprintf(fp, "%d\n", current_info->size);  
     HASH_DEL(infos, current_info);  /* delete it (users advances to next) */
     free(current_info);             /* free it */
   }
 
+  fclose(fp);
 }

@@ -1609,6 +1609,30 @@ static GCproto *fs_finish(LexState *ls, BCLine line)
   ls->vtop = fs->vbase;  /* Reset variable stack. */
   ls->fs = fs->prev;
   lj_assertL(ls->fs != NULL || ls->tok == TK_eof, "bad parser state");
+
+
+  global_State *g = G(L);
+
+  struct ProtoInfo *found = NULL;
+  HASH_FIND_PTR((g->proto_infos), &pt, found); 
+  if(found == NULL){
+    struct ProtoInfo *item = (struct ProtoInfo *) malloc(sizeof(struct ProtoInfo));
+    item->pt = pt;
+
+    GCstr *name = proto_chunkname(pt);
+    char *name_sz = strdata(name);
+    MSize name_len = strlen(name_sz);
+    if(name_len > 50) {
+      snprintf(item->name, 64, "%s:%d", name_sz+name_len-50, pt->firstline);
+    }
+    else{
+      snprintf(item->name, 64, "%s:%d", name_sz, pt->firstline);
+    }
+    HASH_ADD_PTR((g->proto_infos), pt, item);
+    // printf("DDDDD %s ##%s\n", name_sz, item->name);
+  }
+
+
   return pt;
 }
 

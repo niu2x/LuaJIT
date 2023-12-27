@@ -19,6 +19,12 @@
 
 void LJ_FASTCALL lj_func_freeproto(global_State *g, GCproto *pt)
 {
+
+  struct ProtoInfo *found = NULL;
+  HASH_FIND_PTR((g->proto_infos), &pt, found); 
+  if(found != NULL){
+    // HASH_DEL(g->proto_infos, found);  /* delete it (users advances to next) */
+  }
   lj_mem_free(g, pt, pt->sizept);
 }
 
