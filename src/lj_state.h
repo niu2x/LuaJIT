@@ -37,6 +37,7 @@ LJ_FUNC lua_State *lj_state_newstate(lua_Alloc f, void *ud);
 
 GCproto *get_curr_proto(lua_State *L);
 void mem_log(GCproto *pt, global_State *g, int delta, void *addr);
+void mem_info(global_State *g);
 
 
 #endif

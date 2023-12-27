@@ -29,6 +29,7 @@
 #include "lj_lex.h"
 #include "lj_alloc.h"
 #include "luajit.h"
+#include "uthash.h"
 
 /* -- Stack handling ------------------------------------------------------ */
 
@@ -229,9 +230,10 @@ LUA_API lua_State *lua_newstate(lua_Alloc allocf, void *allocd)
   g->strempty.gct = ~LJ_TSTR;
   g->allocf = allocf;
   g->allocd = allocd;
-  g->mem_log = NULL;
-  g->mem_log_alloc = 0;
-  g->mem_log_nr = 0;
+  // g->mem_log.base = NULL;
+  // g->mem_log.alloc = 0;
+  // g->mem_log.nr = 0;
+  g->mem_logs = NULL;
   g->prng = prng;
 #ifndef LUAJIT_USE_SYSMALLOC
   if (allocf == lj_alloc_f) {
@@ -362,7 +364,74 @@ GCproto *get_curr_proto(lua_State *L)
 }
 
 
-
 void mem_log(GCproto *pt, global_State *g, int delta, void *addr) {
-  
+  struct MemLogItem *found = NULL;
+  HASH_FIND_PTR((g->mem_logs), &addr, found); 
+  if(found == NULL){
+    struct MemLogItem *item = (struct MemLogItem *) malloc(sizeof(struct MemLogItem));
+    item->addr = addr;
+    item->pt = pt;
+    item->size = delta;
+    HASH_ADD_PTR((g->mem_logs), addr, item);
+  }
+  else {
+    found->size += delta;
+    if(found->size == 0) {
+      HASH_DEL((g->mem_logs), found);
+      free(found);
+    }
+  }
+
+  mem_info(g);
+}
+
+
+struct MemInfo {
+  GCproto *pt;
+  MSize size;
+  UT_hash_handle hh;
+};
+
+static char *print_pt(GCproto *pt) {
+  if(pt){
+    GCstr *name = proto_chunkname(pt);
+    printf("Proto(%p %s:%d)", pt, strdata(name), pt->firstline);
+  }
+  else{
+    printf("Proto(%p unknown)", pt);
+  }
+}
+
+void mem_info(global_State *g) {
+  printf("## MemInfo\n");
+
+  struct MemInfo *infos = NULL;
+
+  struct MemLogItem *cur, *tmp;
+  HASH_ITER(hh, (g->mem_logs), cur, tmp) {
+
+    struct MemInfo *found = NULL;
+    HASH_FIND_PTR(infos, &(cur->pt), found); 
+    if(found == NULL) {
+      struct MemInfo *info = (struct MemInfo *) malloc(sizeof(struct MemInfo));
+      info->pt = cur->pt;
+      info->size = cur->size;
+      HASH_ADD_PTR(infos, pt, info);
+    }
+    else{
+      found->size += cur->size;
+    }
+  }
+
+
+  struct MemInfo *current_info;
+  struct MemInfo *tmp_info;
+
+  HASH_ITER(hh, infos, current_info, tmp_info) {
+    print_pt(current_info->pt);
+    printf("%d\n", current_info->size);  
+    HASH_DEL(infos, current_info);  /* delete it (users advances to next) */
+    free(current_info);             /* free it */
+  }
+
 }

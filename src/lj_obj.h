@@ -11,6 +11,7 @@
 
 #include "lua.h"
 #include "lj_def.h"
+#include "uthash.h"
 #include "lj_arch.h"
 
 /* -- Memory references --------------------------------------------------- */
@@ -627,7 +628,17 @@ typedef struct StrInternState {
   LJ_ALIGN(8) uint64_t seed;	/* Random string seed. */
 } StrInternState;
 
-struct MemLog {};
+struct MemLogItem {
+  void *addr;
+  GCproto *pt;
+  MSize size;
+  UT_hash_handle hh;
+};
+// struct MemLog {
+//   struct MemLogItem *base;
+//   int32_t nr;
+//   int32_t alloc;
+// };
 
 /* Global state, shared by all threads of a Lua universe. */
 typedef struct global_State {
@@ -659,9 +670,8 @@ typedef struct global_State {
   MRef ctype_state;	/* Pointer to C type state. */
   PRNGState prng;	/* Global PRNG state. */
   GCRef gcroot[GCROOT_MAX];  /* GC roots. */
-  struct MemLog *mem_log;
-  int32_t mem_log_nr;
-  int32_t mem_log_alloc;
+  // struct MemLog mem_log;
+  struct MemLogItem *mem_logs;
 } global_State;
 
 #define mainthread(g)	(&gcref(g->mainthref)->th)
