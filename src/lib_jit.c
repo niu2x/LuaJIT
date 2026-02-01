@@ -22,7 +22,6 @@
 #include "lj_ctype.h"
 #endif
 
-#include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "lj_vmevent.h"
@@ -270,7 +269,6 @@ static void jit_profile_callback(lua_State *L2, lua_State *L, int samples,
       if (G(L2)->panic) G(L2)->panic(L2);
       exit(EXIT_FAILURE);
     }
-    lj_trace_abort(G(L2));
   }
 }
 

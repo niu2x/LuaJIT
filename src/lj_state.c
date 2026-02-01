@@ -22,7 +22,6 @@
 #if LJ_HASFFI
 #include "lj_ctype.h"
 #endif
-#include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "lj_prng.h"
@@ -196,7 +195,6 @@ static TValue *cpluaopen(lua_State *L, lua_CFunction dummy, void *ud)
 #if LJ_HASFFI
   lj_ctype_initfin(L);
 #endif
-  lj_trace_initstate(g);
   lj_err_verify();
   setgcref(g->vmthref, obj2gco(lj_state_new(L)));
   return NULL;
@@ -210,7 +208,6 @@ static void close_state(lua_State *L)
   lj_assertG(gcref(g->gc.root) == obj2gco(L),
 	     "main thread is not first GC object");
   lj_assertG(g->str.num == 0, "leaked %d strings", g->str.num);
-  lj_trace_freestate(g);
 #if LJ_HASFFI
   lj_ctype_freestate(g);
 #endif
@@ -374,7 +371,6 @@ void LJ_FASTCALL lj_state_free(global_State *g, lua_State *L)
 #endif
   if (gcref(L->openupval) != NULL) {
     lj_func_closeuv(L, tvref(L->stack));
-    lj_trace_abort(g);  /* For aa_uref soundness. */
     lj_assertG(gcref(L->openupval) == NULL, "stale open upvalues");
   }
   lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);

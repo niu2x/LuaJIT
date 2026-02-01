@@ -24,7 +24,6 @@
 #include "lj_ctype.h"
 #include "lj_cdata.h"
 #endif
-#include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "lj_vmevent.h"
@@ -461,7 +460,6 @@ static void gc_call_finalizer(global_State *g, lua_State *L,
   int errcode;
   lua_State *VL = vmthread(g);
   TValue *top;
-  lj_trace_abort(g);
   hook_entergc(g);  /* Disable hooks and new traces during __gc. */
   if (LJ_HASPROFILE && (oldh & HOOK_PROFILE)) lj_dispatch_update(g);
   g->gc.threshold = LJ_MAX_MEM;  /* Prevent GC steps. */

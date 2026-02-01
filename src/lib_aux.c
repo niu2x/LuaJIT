@@ -19,7 +19,6 @@
 #include "lj_obj.h"
 #include "lj_err.h"
 #include "lj_state.h"
-#include "lj_trace.h"
 #include "lj_lib.h"
 #include "lj_vmevent.h"
 
@@ -42,7 +41,6 @@ LUALIB_API int luaL_fileresult(lua_State *L, int stat, const char *fname)
     else
       lua_pushfstring(L, "%s", strerror(en));
     setintV(L->top++, en);
-    lj_trace_abort(G(L));
     return 3;
   }
 }

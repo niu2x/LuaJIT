@@ -14,7 +14,6 @@
 #include "lj_cconv.h"
 #include "lj_cdata.h"
 #include "lj_ccall.h"
-#include "lj_trace.h"
 
 /* Target-specific handling of register arguments. */
 #if LJ_TARGET_X86
@@ -1209,7 +1208,6 @@ int lj_ccall_func(lua_State *L, GCcdata *cd)
     /* Automatically detect __stdcall and fix up C function declaration. */
     if (cc.spadj && ctype_cconv(ct->info) == CTCC_CDECL) {
       CTF_INSERT(ct->info, CCONV, CTCC_STDCALL);
-      lj_trace_abort(G(L));
     }
 #endif
     while (gcsteps-- > 0)

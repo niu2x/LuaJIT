@@ -21,7 +21,6 @@
 #include "lj_state.h"
 #include "lj_bc.h"
 #include "lj_frame.h"
-#include "lj_trace.h"
 #include "lj_vm.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
@@ -1034,8 +1033,7 @@ LUA_API int lua_setmetatable(lua_State *L, int idx)
       lj_gc_objbarrier(L, udataV(o), mt);
   } else {
     /* Flush cache, since traces specialize to basemt. But not during __gc. */
-    if (lj_trace_flushall(L))
-      lj_err_caller(L, LJ_ERR_NOGCMM);
+    
     o = index2adr(L, idx);  /* Stack may have been reallocated. */
     if (tvisbool(o)) {
       /* NOBARRIER: basemt is a GC root. */

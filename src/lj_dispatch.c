@@ -22,7 +22,6 @@
 #if LJ_HASFFI
 #include "lj_ccallback.h"
 #endif
-#include "lj_trace.h"
 #include "lj_dispatch.h"
 #if LJ_HASPROFILE
 #include "lj_profile.h"
@@ -189,7 +188,6 @@ int luaJIT_setmode(lua_State *L, int idx, int mode)
 {
   global_State *g = G(L);
   int mm = mode & LUAJIT_MODE_MASK;
-  lj_trace_abort(g);  /* Abort recording on any state change. */
   /* Avoid pulling the rug from under our own feet. */
   if ((g->hookmask & HOOK_GC))
     lj_err_caller(L, LJ_ERR_NOGCMM);
@@ -241,7 +239,6 @@ LUA_API int lua_sethook(lua_State *L, lua_Hook func, int mask, int count)
   g->hookf = func;
   g->hookcount = g->hookcstart = (int32_t)count;
   g->hookmask = (uint8_t)((g->hookmask & ~HOOK_EVENTMASK) | mask);
-  lj_trace_abort(g);  /* Abort recording on any hook change. */
   lj_dispatch_update(g);
   return 1;
 }
@@ -268,7 +265,6 @@ static void callhook(lua_State *L, int event, BCLine line)
   lua_Hook hookf = g->hookf;
   if (hookf && !hook_active(g)) {
     lua_Debug ar;
-    lj_trace_abort(g);  /* Abort recording on any hook call. */
     ar.event = event;
     ar.currentline = line;
     /* Top frame, nextframe = NULL. */

@@ -12,7 +12,6 @@
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_func.h"
-#include "lj_trace.h"
 #include "lj_vm.h"
 
 /* -- Prototypes ---------------------------------------------------------- */

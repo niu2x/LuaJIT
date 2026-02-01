@@ -14,7 +14,6 @@
 #include "lj_state.h"
 #include "lj_frame.h"
 #include "lj_ff.h"
-#include "lj_trace.h"
 #include "lj_vm.h"
 #include "lj_strfmt.h"
 
@@ -593,7 +592,6 @@ static void err_raise_ext(global_State *g, int errcode)
 LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode)
 {
   global_State *g = G(L);
-  lj_trace_abort(g);
   L->status = LUA_OK;
 #if LJ_UNWIND_EXT
   err_raise_ext(g, errcode);
@@ -708,7 +706,6 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_run(lua_State *L)
   if (ef) {
     TValue *errfunc, *top;
     lj_state_checkstack(L, LUA_MINSTACK * 2);  /* Might raise new error. */
-    lj_trace_abort(G(L));
     errfunc = restorestack(L, ef);
     top = L->top;
     if (!tvisfunc(errfunc) || L->status == LUA_ERRERR) {
