@@ -607,12 +607,6 @@
 #define LJ_FR2			0
 #endif
 
-/* Disable or enable the JIT compiler. */
-#if defined(LUAJIT_DISABLE_JIT) || defined(LJ_ARCH_NOJIT) || defined(LJ_OS_NOJIT)
-#define LJ_HASJIT		0
-#else
-#define LJ_HASJIT		1
-#endif
 
 /* Disable or enable the FFI extension. */
 #if defined(LUAJIT_DISABLE_FFI) || defined(LJ_ARCH_NOFFI)
@@ -720,11 +714,6 @@ extern void *LJ_WIN_LOADLIBA(const char *path);
 #define LJ_UNWIND_EXT		0
 #endif
 
-#if LJ_UNWIND_EXT && LJ_HASJIT && !LJ_TARGET_ARM && !(LJ_ABI_WIN && LJ_TARGET_X86)
-#define LJ_UNWIND_JIT		1
-#else
-#define LJ_UNWIND_JIT		0
-#endif
 
 /* Compatibility with Lua 5.1 vs. 5.2. */
 #ifdef LUAJIT_ENABLE_LUA52COMPAT

@@ -4399,7 +4399,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   case BC_JFORI:
   case BC_JFORL:
-#if !LJ_HASJIT
+#if !0
     break;
 #endif
   case BC_FORI:
@@ -4549,7 +4549,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JITERL:
-#if !LJ_HASJIT
+#if !0
     break;
 #endif
   case BC_IITERL:
@@ -4616,7 +4616,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JFUNCF:
-#if !LJ_HASJIT
+#if !0
     break;
 #endif
   case BC_IFUNCF:
@@ -4648,7 +4648,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 
   case BC_JFUNCV:
-#if !LJ_HASJIT
+#if !0
     break;
 #endif
     |  NYI  // NYI: compiled vararg functions

@@ -191,13 +191,6 @@ SBuf * LJ_FASTCALL lj_strfmt_putint(SBuf *sb, int32_t k)
   return sb;
 }
 
-#if LJ_HASJIT
-/* Add number to buffer. */
-SBuf * LJ_FASTCALL lj_strfmt_putnum(SBuf *sb, cTValue *o)
-{
-  return lj_strfmt_putfnum(sb, STRFMT_G14, o->n);
-}
-#endif
 
 SBuf * LJ_FASTCALL lj_strfmt_putptr(SBuf *sb, const void *v)
 {
@@ -233,12 +226,6 @@ static SBuf *strfmt_putquotedlen(SBuf *sb, const char *s, MSize len)
   return sb;
 }
 
-#if LJ_HASJIT
-SBuf * LJ_FASTCALL lj_strfmt_putquoted(SBuf *sb, GCstr *str)
-{
-  return strfmt_putquotedlen(sb, strdata(str), str->len);
-}
-#endif
 
 /* -- Formatted conversions to buffer ------------------------------------- */
 
@@ -268,12 +255,6 @@ static SBuf *strfmt_putfstrlen(SBuf *sb, SFormat sf, const char *s, MSize len)
   return sb;
 }
 
-#if LJ_HASJIT
-SBuf *lj_strfmt_putfstr(SBuf *sb, SFormat sf, GCstr *str)
-{
-  return strfmt_putfstrlen(sb, sf, strdata(str), str->len);
-}
-#endif
 
 /* Add formatted signed/unsigned integer to buffer. */
 SBuf *lj_strfmt_putfxint(SBuf *sb, SFormat sf, uint64_t k)
@@ -491,15 +472,6 @@ GCstr * LJ_FASTCALL lj_strfmt_number(lua_State *L, cTValue *o)
   return tvisint(o) ? lj_strfmt_int(L, intV(o)) : lj_strfmt_num(L, o);
 }
 
-#if LJ_HASJIT
-/* Convert char value to string. */
-GCstr * LJ_FASTCALL lj_strfmt_char(lua_State *L, int c)
-{
-  char buf[1];
-  buf[0] = c;
-  return lj_str_new(L, buf, 1);
-}
-#endif
 
 /* Raw conversion of object to string. */
 GCstr * LJ_FASTCALL lj_strfmt_obj(lua_State *L, cTValue *o)

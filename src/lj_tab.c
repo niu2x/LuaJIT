@@ -150,15 +150,6 @@ GCtab *lj_tab_new_ah(lua_State *L, int32_t a, int32_t h)
   return lj_tab_new(L, (uint32_t)(a > 0 ? a+1 : 0), hsize2hbits(h));
 }
 
-#if LJ_HASJIT
-GCtab * LJ_FASTCALL lj_tab_new1(lua_State *L, uint32_t ahsize)
-{
-  GCtab *t = newtab(L, ahsize & 0xffffff, ahsize >> 24);
-  clearapart(t);
-  if (t->hmask > 0) clearhpart(t);
-  return t;
-}
-#endif
 
 /* Duplicate a table. */
 GCtab * LJ_FASTCALL lj_tab_dup(lua_State *L, const GCtab *kt)
@@ -669,19 +660,3 @@ MSize LJ_FASTCALL lj_tab_len(GCtab *t)
   /* Without a hash part, there's an implicit nil after the last element. */
   return t->hmask ? tab_len_slow(t, hi) : (MSize)hi;
 }
-
-#if LJ_HASJIT
-/* Verify hinted table length or compute it. */
-MSize LJ_FASTCALL lj_tab_len_hint(GCtab *t, size_t hint)
-{
-  size_t asize = (size_t)t->asize;
-  cTValue *tv = arrayslot(t, hint);
-  if (LJ_LIKELY(hint+1 < asize)) {
-    if (LJ_LIKELY(!tvisnil(tv) && tvisnil(tv+1))) return (MSize)hint;
-  } else if (hint+1 <= asize && LJ_LIKELY(t->hmask == 0) && !tvisnil(tv)) {
-    return (MSize)hint;
-  }
-  return lj_tab_len(t);
-}
-#endif
-

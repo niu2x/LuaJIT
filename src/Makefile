@@ -414,9 +414,7 @@ endif
 ifneq (,$(findstring LJ_ARCH_BITS 64,$(TARGET_TESTARCH)))
   DASM_AFLAGS+= -D P64
 endif
-ifneq (,$(findstring LJ_HASJIT 1,$(TARGET_TESTARCH)))
-  DASM_AFLAGS+= -D JIT
-endif
+
 ifneq (,$(findstring LJ_HASFFI 1,$(TARGET_TESTARCH)))
   DASM_AFLAGS+= -D FFI
 endif

@@ -18,9 +18,6 @@
 #include "lj_ctype.h"
 #include "lj_cdata.h"
 #endif
-#if LJ_HASJIT
-#include "lj_ir.h"
-#endif
 #include "lj_serialize.h"
 
 /* Tags for internal serialization format. */
@@ -506,34 +503,5 @@ void lj_serialize_decode(lua_State *L, TValue *o, GCstr *str)
   if (r != sbx.w) lj_err_caller(L, LJ_ERR_BUFFER_LEFTOV);
 }
 
-#if LJ_HASJIT
-/* Peek into buffer to find the result IRType for specialization purposes. */
-LJ_FUNC MSize LJ_FASTCALL lj_serialize_peektype(SBufExt *sbx)
-{
-  uint32_t tp;
-  if (serialize_ru124(sbx->r, sbx->w, &tp)) {
-    /* This must match the handling of all tags in the decoder above. */
-    switch (tp) {
-    case SER_TAG_NIL: return IRT_NIL;
-    case SER_TAG_FALSE: return IRT_FALSE;
-    case SER_TAG_TRUE: return IRT_TRUE;
-    case SER_TAG_NULL: case SER_TAG_LIGHTUD32: case SER_TAG_LIGHTUD64:
-      return IRT_LIGHTUD;
-    case SER_TAG_INT: return LJ_DUALNUM ? IRT_INT : IRT_NUM;
-    case SER_TAG_NUM: return IRT_NUM;
-    case SER_TAG_TAB: case SER_TAG_TAB+1: case SER_TAG_TAB+2:
-    case SER_TAG_TAB+3: case SER_TAG_TAB+4: case SER_TAG_TAB+5:
-    case SER_TAG_DICT_MT:
-      return IRT_TAB;
-    case SER_TAG_INT64: case SER_TAG_UINT64: case SER_TAG_COMPLEX:
-      return IRT_CDATA;
-    case SER_TAG_DICT_STR:
-    default:
-      return IRT_STR;
-    }
-  }
-  return IRT_NIL;  /* Will fail on actual decode. */
-}
-#endif
 
 #endif

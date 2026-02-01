@@ -58,18 +58,13 @@ double lj_vm_foldarith(double x, double y, int op)
   case IR_POW - IR_ADD: return pow(x, y); break;
   case IR_NEG - IR_ADD: return -x; break;
   case IR_ABS - IR_ADD: return fabs(x); break;
-#if LJ_HASJIT
-  case IR_LDEXP - IR_ADD: return ldexp(x, lj_num2int(y)); break;
-  case IR_MIN - IR_ADD: return x < y ? x : y; break;
-  case IR_MAX - IR_ADD: return x > y ? x : y; break;
-#endif
   default: return x;
   }
 }
 
 /* -- Helper functions for generated machine code ------------------------- */
 
-#if (LJ_HASJIT && !(LJ_TARGET_ARM || LJ_TARGET_ARM64 || LJ_TARGET_PPC)) || LJ_TARGET_MIPS
+#if (0 && !(LJ_TARGET_ARM || LJ_TARGET_ARM64 || LJ_TARGET_PPC)) || LJ_TARGET_MIPS
 int32_t LJ_FASTCALL lj_vm_modi(int32_t a, int32_t b)
 {
   uint32_t y, ua, ub;
@@ -84,35 +79,3 @@ int32_t LJ_FASTCALL lj_vm_modi(int32_t a, int32_t b)
 }
 #endif
 
-#if LJ_HASJIT
-
-#ifdef LUAJIT_NO_LOG2
-double lj_vm_log2(double a)
-{
-  return log(a) * 1.4426950408889634074;
-}
-#endif
-
-/* Computes fpm(x) for extended math functions. */
-double lj_vm_foldfpm(double x, int fpm)
-{
-  switch (fpm) {
-  case IRFPM_FLOOR: return lj_vm_floor(x);
-  case IRFPM_CEIL: return lj_vm_ceil(x);
-  case IRFPM_TRUNC: return lj_vm_trunc(x);
-  case IRFPM_SQRT: return sqrt(x);
-  case IRFPM_LOG: return log(x);
-  case IRFPM_LOG2: return lj_vm_log2(x);
-  default: lj_assertX(0, "bad fpm %d", fpm);
-  }
-  return 0;
-}
-
-#if LJ_HASFFI
-int lj_vm_errno(void)
-{
-  return errno;
-}
-#endif
-
-#endif

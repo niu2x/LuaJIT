@@ -13,10 +13,6 @@
 #if LJ_HASFFI
 #include "lj_ctype.h"
 #endif
-#if LJ_HASJIT
-#include "lj_dispatch.h"
-#include "lj_jit.h"
-#endif
 #include "lj_strfmt.h"
 #include "lj_bcdump.h"
 #include "lj_vm.h"
@@ -292,28 +288,8 @@ static void bcwrite_knum(BCWriteCtx *ctx, GCproto *pt)
 static char *bcwrite_bytecode(BCWriteCtx *ctx, char *p, GCproto *pt)
 {
   MSize nbc = pt->sizebc-1;  /* Omit the [JI]FUNC* header. */
-#if LJ_HASJIT
-  uint8_t *q = (uint8_t *)p;
-#endif
   p = lj_buf_wmem(p, proto_bc(pt)+1, nbc*(MSize)sizeof(BCIns));
   UNUSED(ctx);
-#if LJ_HASJIT
-  /* Unpatch modified bytecode containing ILOOP/JLOOP etc. */
-  if ((pt->flags & PROTO_ILOOP) || pt->trace) {
-    jit_State *J = L2J(sbufL(&ctx->sb));
-    MSize i;
-    for (i = 0; i < nbc; i++, q += sizeof(BCIns)) {
-      BCOp op = (BCOp)q[LJ_ENDIAN_SELECT(0, 3)];
-      if (op == BC_IFORL || op == BC_IITERL || op == BC_ILOOP ||
-	  op == BC_JFORI) {
-	q[LJ_ENDIAN_SELECT(0, 3)] = (uint8_t)(op-BC_IFORL+BC_FORL);
-      } else if (op == BC_JFORL || op == BC_JITERL || op == BC_JLOOP) {
-	BCReg rd = q[LJ_ENDIAN_SELECT(2, 1)] + (q[LJ_ENDIAN_SELECT(3, 0)] << 8);
-	memcpy(q, &traceref(J, rd)->startins, 4);
-      }
-    }
-  }
-#endif
   return p;
 }
 

@@ -18,10 +18,6 @@
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_bc.h"
-#if LJ_HASJIT
-#include "lj_ir.h"
-#include "lj_ircall.h"
-#endif
 #include "lj_frame.h"
 #include "lj_dispatch.h"
 #if LJ_HASFFI
@@ -213,7 +209,7 @@ static int build_code(BuildCtx *ctx)
     int32_t ofs = dasm_getpclabel(Dst, i);
     if (ofs < 0) return 0x22000000|i;
     ctx->bc_ofs[i] = ofs;
-    if ((LJ_HASJIT ||
+    if ((0 ||
 	 !(i == BC_JFORI || i == BC_JFORL || i == BC_JITERL || i == BC_JLOOP ||
 	   i == BC_IFORL || i == BC_IITERL || i == BC_ILOOP)) &&
 	(LJ_HASFFI || i != BC_KCDATA))
@@ -252,61 +248,7 @@ BCDEF(BCNAME)
   NULL
 };
 
-#if LJ_HASJIT
-const char *const ir_names[] = {
-#define IRNAME(name, m, m1, m2)	#name,
-IRDEF(IRNAME)
-#undef IRNAME
-  NULL
-};
 
-const char *const irt_names[] = {
-#define IRTNAME(name, size)	#name,
-IRTDEF(IRTNAME)
-#undef IRTNAME
-  NULL
-};
-
-const char *const irfpm_names[] = {
-#define FPMNAME(name)		#name,
-IRFPMDEF(FPMNAME)
-#undef FPMNAME
-  NULL
-};
-
-const char *const irfield_names[] = {
-#define FLNAME(name, ofs)	#name,
-IRFLDEF(FLNAME)
-#undef FLNAME
-  NULL
-};
-
-const char *const ircall_names[] = {
-#define IRCALLNAME(cond, name, nargs, kind, type, flags)	#name,
-IRCALLDEF(IRCALLNAME)
-#undef IRCALLNAME
-  NULL
-};
-
-static const char *const trace_errors[] = {
-#define TREDEF(name, msg)	msg,
-#include "lj_traceerr.h"
-  NULL
-};
-#endif
-
-#if LJ_HASJIT
-static const char *lower(char *buf, const char *s)
-{
-  char *p = buf;
-  while (*s) {
-    *p++ = (*s >= 'A' && *s <= 'Z') ? *s+0x20 : *s;
-    s++;
-  }
-  *p = '\0';
-  return buf;
-}
-#endif
 
 /* Emit C source code for bytecode-related definitions. */
 static void emit_bcdef(BuildCtx *ctx)
@@ -324,9 +266,6 @@ static void emit_bcdef(BuildCtx *ctx)
 /* Emit VM definitions as Lua code for debug modules. */
 static void emit_vmdef(BuildCtx *ctx)
 {
-#if LJ_HASJIT
-  char buf[80];
-#endif
   int i;
   fprintf(ctx->fp, "-- This is a generated file. DO NOT EDIT!\n\n");
   fprintf(ctx->fp, "assert(require(\"jit\").version == \"%s\", \"LuaJIT core/library version mismatch\")\n\n", LUAJIT_VERSION);
@@ -336,36 +275,6 @@ static void emit_vmdef(BuildCtx *ctx)
   for (i = 0; bc_names[i]; i++) fprintf(ctx->fp, "%-6s", bc_names[i]);
   fprintf(ctx->fp, "\",\n\n");
 
-#if LJ_HASJIT
-  fprintf(ctx->fp, "irnames = \"");
-  for (i = 0; ir_names[i]; i++) fprintf(ctx->fp, "%-6s", ir_names[i]);
-  fprintf(ctx->fp, "\",\n\n");
-
-  fprintf(ctx->fp, "irfpm = { [0]=");
-  for (i = 0; irfpm_names[i]; i++)
-    fprintf(ctx->fp, "\"%s\", ", lower(buf, irfpm_names[i]));
-  fprintf(ctx->fp, "},\n\n");
-
-  fprintf(ctx->fp, "irfield = { [0]=");
-  for (i = 0; irfield_names[i]; i++) {
-    char *p;
-    lower(buf, irfield_names[i]);
-    p = strchr(buf, '_');
-    if (p) *p = '.';
-    fprintf(ctx->fp, "\"%s\", ", buf);
-  }
-  fprintf(ctx->fp, "},\n\n");
-
-  fprintf(ctx->fp, "ircall = {\n[0]=");
-  for (i = 0; ircall_names[i]; i++)
-    fprintf(ctx->fp, "\"%s\",\n", ircall_names[i]);
-  fprintf(ctx->fp, "},\n\n");
-
-  fprintf(ctx->fp, "traceerr = {\n[0]=");
-  for (i = 0; trace_errors[i]; i++)
-    fprintf(ctx->fp, "\"%s\",\n", trace_errors[i]);
-  fprintf(ctx->fp, "},\n\n");
-#endif
 }
 
 /* -- Argument parsing ---------------------------------------------------- */

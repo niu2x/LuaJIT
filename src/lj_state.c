@@ -111,10 +111,6 @@ void LJ_FASTCALL lj_state_growstack(lua_State *L, MSize need)
     }
     resizestack(L, n);
   } else {  /* Request would overflow. Raise a stack overflow error. */
-    if (LJ_HASJIT) {
-      TValue *base = tvref(G(L)->jit_base);
-      if (base) L->base = base;
-    }
     if (curr_funcisL(L)) {
       L->top = curr_topL(L);
       if (L->top > tvref(L->maxstack)) {
@@ -334,11 +330,6 @@ LUA_API void lua_close(lua_State *L)
   setgcrefnull(g->cur_L);
   lj_func_closeuv(L, tvref(L->stack));
   lj_gc_separateudata(g, 1);  /* Separate udata which have GC metamethods. */
-#if LJ_HASJIT
-  G2J(g)->flags &= ~JIT_F_ON;
-  G2J(g)->state = LJ_TRACE_IDLE;
-  lj_dispatch_update(g);
-#endif
   for (i = 0;;) {
     hook_enter(g);
     L->status = LUA_OK;

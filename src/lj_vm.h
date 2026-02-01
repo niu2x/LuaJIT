@@ -38,9 +38,6 @@ LJ_ASMF int lj_vm_cpuid(uint32_t f, uint32_t res[4]);
 void lj_vm_cachesync(void *start, void *end);
 #endif
 LJ_ASMF LJ_CONSTF double lj_vm_foldarith(double x, double y, int op);
-#if LJ_HASJIT
-LJ_ASMF LJ_CONSTF double lj_vm_foldfpm(double x, int op);
-#endif
 #if LJ_SOFTFP && LJ_TARGET_MIPS64
 LJ_ASMF int32_t lj_vm_tointg(double x);
 #endif
@@ -84,25 +81,6 @@ LJ_ASMF LJ_CONSTF double lj_vm_log2(double);
 LJ_ASMF int32_t LJ_FASTCALL lj_vm_modi(int32_t, int32_t);
 #endif
 
-#if LJ_HASJIT
-#if LJ_TARGET_X86ORX64
-LJ_ASMF void lj_vm_floor_sse(void);
-LJ_ASMF void lj_vm_ceil_sse(void);
-LJ_ASMF void lj_vm_trunc_sse(void);
-#endif
-#if LJ_TARGET_PPC || LJ_TARGET_ARM64
-#define lj_vm_trunc	trunc
-#else
-LJ_ASMF LJ_CONSTF double lj_vm_trunc(double);
-#if LJ_TARGET_ARM
-LJ_ASMF double lj_vm_trunc_sf(double);
-#endif
-#endif
-#if LJ_HASFFI
-LJ_ASMF int lj_vm_errno(void);
-#endif
-LJ_ASMF TValue *lj_vm_next(GCtab *t, uint32_t idx);
-#endif
 
 /* Continuations for metamethods. */
 LJ_ASMF void lj_cont_cat(void);  /* Continue with concatenation. */

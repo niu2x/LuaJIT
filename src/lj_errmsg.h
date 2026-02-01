@@ -101,14 +101,7 @@ ERRDEF(STRCAPU,	"unfinished capture")
 ERRDEF(STRFMT,	"invalid option " LUA_QS " to " LUA_QL("format"))
 ERRDEF(STRGSRV,	"invalid replacement value (a %s)")
 ERRDEF(BADMODN,	"name conflict for module " LUA_QS)
-#if LJ_HASJIT
-ERRDEF(JITPROT,	"runtime code generation failed, restricted kernel?")
-ERRDEF(NOJIT,	"JIT compiler disabled")
-#elif defined(LJ_ARCH_NOJIT)
-ERRDEF(NOJIT,	"no JIT compiler for this architecture (yet)")
-#else
 ERRDEF(NOJIT,	"JIT compiler permanently disabled by build option")
-#endif
 ERRDEF(JITOPT,	"unknown or malformed optimization flag " LUA_QS)
 
 /* Lexer/parser errors. */

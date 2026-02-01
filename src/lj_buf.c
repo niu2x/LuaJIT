@@ -106,24 +106,7 @@ char * LJ_FASTCALL lj_buf_tmp(lua_State *L, MSize sz)
   return lj_buf_need(sb, sz);
 }
 
-#if LJ_HASBUFFER && LJ_HASJIT
-void lj_bufx_set(SBufExt *sbx, const char *p, MSize len, GCobj *ref)
-{
-  lua_State *L = sbufL(sbx);
-  lj_bufx_free(L, sbx);
-  lj_bufx_set_cow(L, sbx, p, len);
-  setgcref(sbx->cowref, ref);
-  lj_gc_objbarrier(L, (GCudata *)sbx - 1, ref);
-}
 
-#if LJ_HASFFI
-MSize LJ_FASTCALL lj_bufx_more(SBufExt *sbx, MSize sz)
-{
-  lj_buf_more((SBuf *)sbx, sz);
-  return sbufleft(sbx);
-}
-#endif
-#endif
 
 /* -- Low-level buffer put operations ------------------------------------- */
 
@@ -135,7 +118,7 @@ SBuf *lj_buf_putmem(SBuf *sb, const void *q, MSize len)
   return sb;
 }
 
-#if LJ_HASJIT || LJ_HASFFI
+#if LJ_HASFFI
 static LJ_NOINLINE SBuf * LJ_FASTCALL lj_buf_putchar2(SBuf *sb, int c)
 {
   char *w = lj_buf_more2(sb, 1);

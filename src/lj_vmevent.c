@@ -53,9 +53,6 @@ void lj_vmevent_call(lua_State *L, ptrdiff_t argbase)
     fputc('\n', stderr);
   }
   setgcref(g->cur_L, obj2gco(oldL));
-#if LJ_HASJIT
-  G2J(g)->L = oldL;
-#endif
   hook_restore(g, oldh);
   if (g->vmevmask != VMEVENT_NOCACHE)
     g->vmevmask = oldmask;  /* Restore event mask, but not if not modified. */

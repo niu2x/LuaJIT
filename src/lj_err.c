@@ -333,58 +333,10 @@ LJ_FUNCA int lj_err_unwind_win(EXCEPTION_RECORD *rec,
   return 1;  /* ExceptionContinueSearch */
 }
 
-#if LJ_UNWIND_JIT
-
-#if LJ_TARGET_X64
-#define CONTEXT_REG_PC	Rip
-#elif LJ_TARGET_ARM64
-#define CONTEXT_REG_PC	Pc
-#else
-#error "NYI: Windows arch-specific unwinder for JIT-compiled code"
-#endif
-
-/* Windows unwinder for JIT-compiled code. */
-static void err_unwind_win_jit(global_State *g, int errcode)
-{
-  CONTEXT ctx;
-  UNWIND_HISTORY_TABLE hist;
-
-  memset(&hist, 0, sizeof(hist));
-  RtlCaptureContext(&ctx);
-  while (1) {
-    DWORD64 frame, base, addr = ctx.CONTEXT_REG_PC;
-    void *hdata;
-    PRUNTIME_FUNCTION func = RtlLookupFunctionEntry(addr, &base, &hist);
-    if (!func) {  /* Found frame without .pdata: must be JIT-compiled code. */
-      ExitNo exitno;
-      uintptr_t stub = lj_trace_unwind(G2J(g), (uintptr_t)(addr - sizeof(MCode)), &exitno);
-      if (stub) {  /* Jump to side exit to unwind the trace. */
-	ctx.CONTEXT_REG_PC = stub;
-	G2J(g)->exitcode = errcode;
-	RtlRestoreContext(&ctx, NULL);  /* Does not return. */
-      }
-      break;
-    }
-    RtlVirtualUnwind(UNW_FLAG_NHANDLER, base, addr, func,
-		     &ctx, &hdata, &frame, NULL);
-    if (!addr) break;
-  }
-  /* Unwinding failed, if we end up here. */
-}
-#endif
 
 /* Raise Windows exception. */
 static void err_raise_ext(global_State *g, int errcode)
 {
-#if LJ_UNWIND_JIT
-  if (tvref(g->jit_base)) {
-    err_unwind_win_jit(g, errcode);
-    return;  /* Unwinding failed. */
-  }
-#elif LJ_HASJIT
-  /* Cannot catch on-trace errors for Windows/x86 SEH. Unwind to interpreter. */
-  setmref(g->jit_base, NULL);
-#endif
   UNUSED(g);
   RaiseException(LJ_EXCODE_MAKE(errcode), 1 /* EH_NONCONTINUABLE */, 0, NULL);
 }
@@ -514,126 +466,6 @@ void lj_err_verify(void)
 }
 #endif
 
-#if LJ_UNWIND_JIT
-/* DWARF2 personality handler for JIT-compiled code. */
-static int err_unwind_jit(int version, int actions,
-  uint64_t uexclass, _Unwind_Exception *uex, _Unwind_Context *ctx)
-{
-  /* NYI: FFI C++ exception interoperability. */
-  if (version != 1 || !LJ_UEXCLASS_CHECK(uexclass))
-    return _URC_FATAL_PHASE1_ERROR;
-  if ((actions & _UA_SEARCH_PHASE)) {
-    return _URC_HANDLER_FOUND;
-  }
-  if ((actions & _UA_CLEANUP_PHASE)) {
-    global_State *g = *(global_State **)(uex+1);
-    ExitNo exitno;
-    uintptr_t addr = _Unwind_GetIP(ctx);  /* Return address _after_ call. */
-    uintptr_t stub = lj_trace_unwind(G2J(g), addr - sizeof(MCode), &exitno);
-    lj_assertG(tvref(g->jit_base), "unexpected throw across mcode frame");
-    if (stub) {  /* Jump to side exit to unwind the trace. */
-      G2J(g)->exitcode = LJ_UEXCLASS_ERRCODE(uexclass);
-#ifdef LJ_TARGET_MIPS
-      _Unwind_SetGR(ctx, 4, stub);
-      _Unwind_SetGR(ctx, 5, exitno);
-      _Unwind_SetIP(ctx, (uintptr_t)(void *)lj_vm_unwind_stub);
-#else
-      _Unwind_SetIP(ctx, stub);
-#endif
-      return _URC_INSTALL_CONTEXT;
-    }
-    return _URC_FATAL_PHASE2_ERROR;
-  }
-  return _URC_FATAL_PHASE1_ERROR;
-}
-
-/* DWARF2 template frame info for JIT-compiled code.
-**
-** After copying the template to the start of the mcode segment,
-** the frame handler function and the code size is patched.
-** The frame handler always installs a new context to jump to the exit,
-** so don't bother to add any unwind opcodes.
-*/
-static const uint8_t err_frame_jit_template[] = {
-#if LJ_BE
-  0,0,0,
-#endif
-  LJ_64 ? 0x1c : 0x14,  /* CIE length. */
-#if LJ_LE
-  0,0,0,
-#endif
-  0,0,0,0, 1, 'z','P','R',0,  /* CIE mark, CIE version, augmentation. */
-  1, LJ_64 ? 0x78 : 0x7c, LJ_TARGET_EHRAREG,  /* Code/data align, RA. */
-#if LJ_64
-  10, 0, 0,0,0,0,0,0,0,0, 0x1b,  /* Aug. data ABS handler, PCREL|SDATA4 code. */
-  0,0,0,0,0,  /* Alignment. */
-#else
-  6, 0, 0,0,0,0, 0x1b,  /* Aug. data ABS handler, PCREL|SDATA4 code. */
-  0,  /* Alignment. */
-#endif
-#if LJ_BE
-  0,0,0,
-#endif
-  LJ_64 ? 0x14 : 0x10,  /* FDE length. */
-  0,0,0,
-  LJ_64 ? 0x24 : 0x1c,  /* CIE offset. */
-  0,0,0,
-  LJ_64 ? 0x14 : 0x10,  /* Code offset. After Final FDE. */
-#if LJ_LE
-  0,0,0,
-#endif
-  0,0,0,0, 0, 0,0,0, /* Code size, augmentation length, alignment. */
-#if LJ_64
-  0,0,0,0,  /* Alignment. */
-#endif
-  0,0,0,0  /* Final FDE. */
-};
-
-#define ERR_FRAME_JIT_OFS_HANDLER	0x12
-#define ERR_FRAME_JIT_OFS_FDE		(LJ_64 ? 0x20 : 0x18)
-#define ERR_FRAME_JIT_OFS_CODE_SIZE	(LJ_64 ? 0x2c : 0x24)
-#if LJ_TARGET_OSX
-#define ERR_FRAME_JIT_OFS_REGISTER	ERR_FRAME_JIT_OFS_FDE
-#else
-#define ERR_FRAME_JIT_OFS_REGISTER	0
-#endif
-
-extern void __register_frame(const void *);
-extern void __deregister_frame(const void *);
-
-uint8_t *lj_err_register_mcode(void *base, size_t sz, uint8_t *info)
-{
-  ASMFunction handler = (ASMFunction)err_unwind_jit;
-  memcpy(info, err_frame_jit_template, sizeof(err_frame_jit_template));
-#if LJ_ABI_PAUTH
-#if LJ_TARGET_ARM64
-  handler = ptrauth_auth_and_resign(handler,
-    ptrauth_key_function_pointer, 0,
-    ptrauth_key_process_independent_code, info + ERR_FRAME_JIT_OFS_HANDLER);
-#else
-#error "missing pointer authentication support for this architecture"
-#endif
-#endif
-  memcpy(info + ERR_FRAME_JIT_OFS_HANDLER, &handler, sizeof(handler));
-  *(uint32_t *)(info + ERR_FRAME_JIT_OFS_CODE_SIZE) =
-    (uint32_t)(sz - sizeof(err_frame_jit_template) - (info - (uint8_t *)base));
-  __register_frame(info + ERR_FRAME_JIT_OFS_REGISTER);
-#ifdef LUA_USE_ASSERT
-  {
-    struct dwarf_eh_bases ehb;
-    lj_assertX(_Unwind_Find_FDE(info + sizeof(err_frame_jit_template)+1, &ehb),
-	       "bad JIT unwind table registration");
-  }
-#endif
-  return info + sizeof(err_frame_jit_template);
-}
-
-void lj_err_deregister_mcode(void *base, size_t sz, uint8_t *info)
-{
-  UNUSED(base); UNUSED(sz);
-  __deregister_frame(info + ERR_FRAME_JIT_OFS_REGISTER);
-}
-#endif
 
 #else /* LJ_TARGET_ARM */
 
@@ -731,14 +563,7 @@ void lj_err_verify(void)
 }
 #endif
 
-/*
-** Note: LJ_UNWIND_JIT is not implemented for 32 bit ARM.
-**
-** The quirky ARM unwind API doesn't have __register_frame().
-** A potential workaround might involve _Unwind_Backtrace.
-** But most 32 bit ARM targets don't qualify for LJ_UNWIND_EXT, anyway,
-** since they are built without unwind tables by default.
-*/
+
 
 #endif /* LJ_TARGET_ARM */
 
@@ -783,9 +608,6 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode)
   if (G(L)->panic)
     G(L)->panic(L);
 #else
-#if LJ_HASJIT
-  setmref(g->jit_base, NULL);
-#endif
   {
     void *cf = err_unwind(L, NULL, errcode);
     if (cframe_unwind_ff(cf))
@@ -816,10 +638,6 @@ LJ_NOINLINE void lj_err_mem(lua_State *L)
     lj_err_err(L);
   if (L->status == LUA_ERRERR+1)  /* Don't touch the stack during lua_open. */
     lj_vm_unwind_c(L->cframe, LUA_ERRMEM);
-  if (LJ_HASJIT) {
-    TValue *base = tvref(G(L)->jit_base);
-    if (base) L->base = base;
-  }
   if (curr_funcisL(L)) {
     L->top = curr_topL(L);
     if (LJ_UNLIKELY(L->top > tvref(L->maxstack))) {
@@ -886,7 +704,7 @@ static ptrdiff_t finderrfunc(lua_State *L)
 /* Runtime error. */
 LJ_NOINLINE void LJ_FASTCALL lj_err_run(lua_State *L)
 {
-  ptrdiff_t ef = (LJ_HASJIT && tvref(G(L)->jit_base)) ? 0 : finderrfunc(L);
+  ptrdiff_t ef =  finderrfunc(L);
   if (ef) {
     TValue *errfunc, *top;
     lj_state_checkstack(L, LUA_MINSTACK * 2);  /* Might raise new error. */
@@ -916,16 +734,7 @@ void LJ_FASTCALL lj_err_stkov(lua_State *L)
   lj_err_run(L);
 }
 
-#if LJ_HASJIT
-/* Rethrow error after doing a trace exit. */
-LJ_NOINLINE void LJ_FASTCALL lj_err_trace(lua_State *L, int errcode)
-{
-  if (errcode == LUA_ERRRUN)
-    lj_err_run(L);
-  else
-    lj_err_throw(L, errcode);
-}
-#endif
+
 
 /* Formatted runtime error message. */
 LJ_NORET LJ_NOINLINE static void err_msgv(lua_State *L, ErrMsg em, ...)
@@ -933,10 +742,7 @@ LJ_NORET LJ_NOINLINE static void err_msgv(lua_State *L, ErrMsg em, ...)
   const char *msg;
   va_list argp;
   va_start(argp, em);
-  if (LJ_HASJIT) {
-    TValue *base = tvref(G(L)->jit_base);
-    if (base) L->base = base;
-  }
+ 
   if (curr_funcisL(L)) L->top = curr_topL(L);
   msg = lj_strfmt_pushvf(L, err2msg(em), argp);
   va_end(argp);
@@ -1012,7 +818,7 @@ LJ_NOINLINE void lj_err_optype_call(lua_State *L, TValue *o)
 LJ_NOINLINE void lj_err_callermsg(lua_State *L, const char *msg)
 {
   TValue *frame = NULL, *pframe = NULL;
-  if (!(LJ_HASJIT && tvref(G(L)->jit_base))) {
+  if (!(0 && tvref(G(L)->jit_base))) {
     frame = L->base-1;
     if (frame_islua(frame)) {
       pframe = frame_prevl(frame);
