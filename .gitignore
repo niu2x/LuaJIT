@@ -10,3 +10,17 @@
 *.dmp
 *.swp
 .tags
+/build
+/gen
+buildvm_arch.h
+src/host/buildvm
+src/host/minilua
+src/jit/vmdef.lua
+src/lj_bcdef.h
+src/lj_ffdef.h
+src/lj_folddef.h
+src/lj_libdef.h
+src/lj_recdef.h
+src/lj_vm.S
+src/luajit
+src/luajit_relver.txt
