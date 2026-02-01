@@ -1,3 +1,4 @@
+echo "HOSTCC    host/buildvm.o"
 gcc  -O2 -fomit-frame-pointer -Wall   -I. -DLUAJIT_TARGET=LUAJIT_ARCH_x64 -DLJ_ARCH_HASFPU=1 -DLJ_ABI_SOFTFP=0 -DLJ_ABI_SHADOW_STACK=1  -c -o host/buildvm.o host/buildvm.c
 echo "HOSTCC    host/buildvm_asm.o"
 gcc  -O2 -fomit-frame-pointer -Wall   -I. -DLUAJIT_TARGET=LUAJIT_ARCH_x64 -DLJ_ARCH_HASFPU=1 -DLJ_ABI_SOFTFP=0 -DLJ_ABI_SHADOW_STACK=1  -c -o host/buildvm_asm.o host/buildvm_asm.c

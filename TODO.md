@@ -4,7 +4,6 @@
 # compile-time macro
 - LJ_ABI_SOFTFP
 - LJ_ABI_SHADOW_STACK
-- LUAJIT_TARGET=LUAJIT_ARCH_x64
 
 # compile
 - build minilua
