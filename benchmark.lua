@@ -230,6 +230,134 @@ local function test_tail_recursion()
     return tail_recursive_factorial(1000)
 end
 
+-- 16. 钩子函数测试 (sethook)
+local function test_sethook(n)
+    local count = 0
+    local hook_func = function()
+        count = count + 1
+    end
+    
+    -- 设置钩子
+    debug.sethook(hook_func, "c")
+    
+    -- 执行一些操作触发钩子
+    for i = 1, n do
+        local x = i * 2
+    end
+    
+    -- 关闭钩子
+    debug.sethook()
+    
+    return count
+end
+
+-- 17. 元表操作测试 (setmetatable/getmetatable)
+local function test_setmetatable(n)
+    local mt = {}
+    local count = 0
+    
+    for i = 1, n do
+        local t = {}
+        setmetatable(t, mt)
+        local get_mt = getmetatable(t)
+        if get_mt == mt then
+            count = count + 1
+        end
+    end
+    
+    return count
+end
+
+-- 18. 函数环境测试 (setfuncenv/getfuncenv)
+local function test_setfuncenv(n)
+    local env = {print = print}
+    local func = function(x) return x * 2 end
+    local count = 0
+    
+    for i = 1, n do
+        setfenv(func, env)
+        local get_env = getfenv(func)
+        if get_env == env then
+            count = count + 1
+        end
+    end
+    
+    return count
+end
+
+-- 19. 原始表操作测试 (rawget/rawset)
+local function test_raw_operations(n)
+    local t = {}
+    local mt = {
+        __index = function() return 0 end,
+        __newindex = function() end
+    }
+    setmetatable(t, mt)
+    
+    local sum = 0
+    for i = 1, n do
+        rawset(t, i, i)
+        sum = sum + rawget(t, i)
+    end
+    
+    return sum
+end
+
+-- 20. 字符串加载测试 (loadstring)
+local function test_loadstring(n)
+    local count = 0
+    local code = "return x * 2"
+    
+    for i = 1, n do
+        local func = loadstring(code)
+        if func then
+            setfenv(func, {x = i})
+            local result = func()
+            if result == i * 2 then
+                count = count + 1
+            end
+        end
+    end
+    
+    return count
+end
+
+-- 21. 错误处理测试 (pcall/xpcall)
+local function test_pcall(n)
+    local func = function(x)
+        if x % 1000 == 0 then
+            error("test error")
+        end
+        return x * 2
+    end
+    
+    local count = 0
+    for i = 1, n do
+        local success, result = pcall(func, i)
+        if success then
+            count = count + 1
+        end
+    end
+    
+    return count
+end
+
+-- 22. 类型判断测试 (type)
+local function test_type(n)
+    local values = {1, "string", true, nil, {}, function() end}
+    local count = 0
+    
+    for i = 1, n do
+        local v = values[(i % #values) + 1]
+        local t = type(v)
+        if t then
+            count = count + 1
+        end
+    end
+    
+    return count
+end
+
 -- 测试套件
 local tests = {
     ["arithmetic"] = {test_arithmetic, iterations},
@@ -247,6 +375,13 @@ local tests = {
     ["memory"] = {test_memory_allocation, math.min(iterations, 10000)},
     ["sieve"] = {test_sieve, 10000},  -- 固定大小
     ["tailrec"] = {test_tail_recursion},
+    ["sethook"] = {test_sethook, math.min(iterations, 10000)},
+    ["setmetatable"] = {test_setmetatable, math.min(iterations, 100000)},
+    ["setfuncenv"] = {test_setfuncenv, math.min(iterations, 100000)},
+    ["rawops"] = {test_raw_operations, math.min(iterations, 100000)},
+    ["loadstring"] = {test_loadstring, math.min(iterations, 1000)},
+    ["pcall"] = {test_pcall, math.min(iterations, 100000)},
+    ["type"] = {test_type, math.min(iterations, 100000)},
 }
 
 -- 运行指定测试

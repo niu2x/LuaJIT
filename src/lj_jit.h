@@ -8,5 +8,4 @@
 
 #include "lj_obj.h"
 
-
 #endif

@@ -11,14 +11,14 @@
 
 #if LJ_HASBUFFER
 
-#define LJ_SERIALIZE_DEPTH	100	/* Default depth. */
+    #define LJ_SERIALIZE_DEPTH 100 /* Default depth. */
 
-LJ_FUNC void LJ_FASTCALL lj_serialize_dict_prep_str(lua_State *L, GCtab *dict);
-LJ_FUNC void LJ_FASTCALL lj_serialize_dict_prep_mt(lua_State *L, GCtab *dict);
-LJ_FUNC SBufExt * LJ_FASTCALL lj_serialize_put(SBufExt *sbx, cTValue *o);
-LJ_FUNC char * LJ_FASTCALL lj_serialize_get(SBufExt *sbx, TValue *o);
-LJ_FUNC GCstr * LJ_FASTCALL lj_serialize_encode(lua_State *L, cTValue *o);
-LJ_FUNC void lj_serialize_decode(lua_State *L, TValue *o, GCstr *str);
+LJ_FUNC void LJ_FASTCALL     lj_serialize_dict_prep_str(lua_State* L, GCtab* dict);
+LJ_FUNC void LJ_FASTCALL     lj_serialize_dict_prep_mt(lua_State* L, GCtab* dict);
+LJ_FUNC SBufExt* LJ_FASTCALL lj_serialize_put(SBufExt* sbx, cTValue* o);
+LJ_FUNC char* LJ_FASTCALL    lj_serialize_get(SBufExt* sbx, TValue* o);
+LJ_FUNC GCstr* LJ_FASTCALL   lj_serialize_encode(lua_State* L, cTValue* o);
+LJ_FUNC void                 lj_serialize_decode(lua_State* L, TValue* o, GCstr* str);
 
 #endif
 

@@ -7,4 +7,3 @@
 #define LUA_CORE
 
 #include "lj_obj.h"
-

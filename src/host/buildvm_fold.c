@@ -5,8 +5,7 @@
 
 #include "buildvm.h"
 #include "lj_obj.h"
-void emit_fold(BuildCtx *ctx)
+void emit_fold(BuildCtx* ctx)
 {
-  UNUSED(ctx);
+    UNUSED(ctx);
 }
-

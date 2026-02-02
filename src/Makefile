@@ -50,8 +50,6 @@ CCOPT_x86= -march=i686 -msse -msse2 -mfpmath=sse
 CCOPT_x64=
 CCOPT_arm=
 CCOPT_arm64=
-CCOPT_ppc=
-CCOPT_mips=
 #
 CCDEBUG=
 # Uncomment the next line to generate debug information:
@@ -132,11 +130,6 @@ XCFLAGS=
 # This define is required to run LuaJIT under Valgrind. The Valgrind
 # header files must be installed. You should enable debug information, too.
 #XCFLAGS+= -DLUAJIT_USE_VALGRIND
-#
-# This is the client for the GDB JIT API. GDB 7.0 or higher is required
-# to make use of it. See lj_gdbjit.c for details. Enabling this causes
-# a non-negligible overhead, even when not running under GDB.
-#XCFLAGS+= -DLUAJIT_USE_GDBJIT
 #
 # Turn on assertions for the Lua/C API to debug problems with lua_* calls.
 # This is rather slow -- use only while developing C libraries/embeddings.
@@ -249,27 +242,7 @@ ifneq (,$(findstring LJ_TARGET_ARM64 ,$(TARGET_TESTARCH)))
   endif
   TARGET_LJARCH= arm64
 else
-ifneq (,$(findstring LJ_TARGET_PPC ,$(TARGET_TESTARCH)))
-  ifneq (,$(findstring LJ_LE 1,$(TARGET_TESTARCH)))
-    TARGET_ARCH= -DLJ_ARCH_ENDIAN=LUAJIT_LE
-  else
-    TARGET_ARCH= -DLJ_ARCH_ENDIAN=LUAJIT_BE
-  endif
-  TARGET_LJARCH= ppc
-else
-ifneq (,$(findstring LJ_TARGET_MIPS ,$(TARGET_TESTARCH)))
-  ifneq (,$(findstring MIPSEL ,$(TARGET_TESTARCH)))
-    TARGET_ARCH= -D__MIPSEL__=1
-  endif
-  ifneq (,$(findstring LJ_TARGET_MIPS64 ,$(TARGET_TESTARCH)))
-    TARGET_LJARCH= mips64
-  else
-    TARGET_LJARCH= mips
-  endif
-else
   $(error Unsupported target architecture)
-endif
-endif
 endif
 endif
 endif
@@ -463,23 +436,6 @@ ifeq (arm,$(TARGET_LJARCH))
     DASM_AFLAGS+= -D IOS
   endif
 else
-ifneq (,$(findstring LJ_TARGET_MIPSR6 ,$(TARGET_TESTARCH)))
-  DASM_AFLAGS+= -D MIPSR6
-endif
-ifeq (ppc,$(TARGET_LJARCH))
-  ifneq (,$(findstring LJ_ARCH_SQRT 1,$(TARGET_TESTARCH)))
-    DASM_AFLAGS+= -D SQRT
-  endif
-  ifneq (,$(findstring LJ_ARCH_ROUND 1,$(TARGET_TESTARCH)))
-    DASM_AFLAGS+= -D ROUND
-  endif
-  ifneq (,$(findstring LJ_ARCH_PPC32ON64 1,$(TARGET_TESTARCH)))
-    DASM_AFLAGS+= -D GPR64
-  endif
-  ifeq (PS3,$(TARGET_SYS))
-    DASM_AFLAGS+= -D PPE -D TOC
-  endif
-endif
 endif
 endif
 
@@ -516,10 +472,9 @@ LJCORE_O= lj_assert.o lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o \
 	  lj_str.o lj_tab.o lj_func.o lj_udata.o lj_meta.o lj_debug.o \
 	  lj_prng.o lj_state.o lj_dispatch.o lj_vmevent.o lj_vmmath.o \
 	  lj_strscan.o lj_strfmt.o lj_strfmt_num.o lj_serialize.o \
-	  lj_api.o lj_profile.o \
+	  lj_api.o  \
 	  lj_lex.o lj_parse.o lj_bcread.o lj_bcwrite.o lj_load.o \
 	  lj_mcode.o lj_crecord.o lj_ffrecord.o \
-	  lj_asm.o \
 	  lj_ctype.o lj_cdata.o lj_cconv.o lj_ccall.o lj_ccallback.o \
 	  lj_carith.o lj_clib.o lj_cparse.o \
 	  lj_lib.o lj_alloc.o lib_aux.o \
