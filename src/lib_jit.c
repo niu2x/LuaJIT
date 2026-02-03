@@ -24,7 +24,6 @@
 
 #include "lj_dispatch.h"
 #include "lj_vm.h"
-#include "lj_vmevent.h"
 #include "lj_lib.h"
 
 #include "luajit.h"
@@ -90,27 +89,6 @@ LJLIB_CF(jit_attach)
 {
 #ifdef LUAJIT_DISABLE_VMEVENT
     luaL_error(L, "vmevent API disabled");
-#else
-    GCfunc* fn = lj_lib_checkfunc(L, 1);
-    GCstr*  s  = lj_lib_optstr(L, 2);
-    luaL_findtable(L, LUA_REGISTRYINDEX, LJ_VMEVENTS_REGKEY, LJ_VMEVENTS_HSIZE);
-    if (s) { /* Attach to given event. */
-        const uint8_t* p = (const uint8_t*)strdata(s);
-        uint32_t       h = s->len;
-        while (*p)
-            h = h ^ (lj_rol(h, 6) + *p++);
-        lua_pushvalue(L, 1);
-        lua_rawseti(L, -2, VMEVENT_HASHIDX(h));
-        G(L)->vmevmask = VMEVENT_NOCACHE; /* Invalidate cache. */
-    } else { /* Detach if no event given. */
-        setnilV(L->top++);
-        while (lua_next(L, -2)) {
-            L->top--;
-            if (tvisfunc(L->top) && funcV(L->top) == fn) {
-                setnilV(lj_tab_set(L, tabV(L->top-2), L->top-1));
-            }
-        }
-    }
 #endif
     return 0;
 }

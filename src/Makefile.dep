@@ -1,6 +1,6 @@
 lib_aux.o: lib_aux.c lua.h luaconf.h lauxlib.h lj_obj.h lj_def.h \
  lj_arch.h lj_err.h lj_errmsg.h lj_state.h  lj_jit.h lj_ir.h \
- lj_dispatch.h lj_bc.h lj_traceerr.h lj_lib.h lj_vmevent.h
+ lj_dispatch.h lj_bc.h lj_traceerr.h lj_lib.h 
 lib_base.o: lib_base.c lua.h luaconf.h lauxlib.h lualib.h lj_obj.h \
  lj_def.h lj_arch.h lj_gc.h lj_err.h lj_errmsg.h lj_debug.h lj_buf.h \
  lj_str.h lj_tab.h lj_meta.h lj_state.h lj_frame.h lj_bc.h lj_ctype.h \
@@ -30,7 +30,7 @@ lib_jit.o: lib_jit.c lua.h luaconf.h lauxlib.h lualib.h lj_obj.h lj_def.h \
  lj_arch.h lj_gc.h lj_err.h lj_errmsg.h lj_debug.h lj_str.h lj_tab.h \
  lj_state.h lj_bc.h lj_ctype.h lj_ir.h lj_jit.h lj_ircall.h lj_iropt.h \
  lj_target.h lj_target_*.h  lj_dispatch.h lj_traceerr.h \
- lj_vm.h lj_vmevent.h lj_lib.h luajit.h lj_libdef.h
+ lj_vm.h  lj_lib.h luajit.h lj_libdef.h
 lib_math.o: lib_math.c lua.h luaconf.h lauxlib.h lualib.h lj_obj.h \
  lj_def.h lj_arch.h lj_err.h lj_errmsg.h lj_lib.h lj_vm.h lj_prng.h \
  lj_libdef.h
@@ -120,7 +120,7 @@ lj_func.o: lj_func.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
 lj_gc.o: lj_gc.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
  lj_err.h lj_errmsg.h lj_buf.h lj_str.h lj_tab.h lj_func.h lj_udata.h \
  lj_meta.h lj_state.h lj_frame.h lj_bc.h lj_ctype.h lj_cdata.h  \
- lj_jit.h lj_ir.h lj_dispatch.h lj_traceerr.h lj_vm.h lj_vmevent.h
+ lj_jit.h lj_ir.h lj_dispatch.h lj_traceerr.h lj_vm.h 
 lj_ir.o: lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
  lj_buf.h lj_str.h lj_tab.h lj_ir.h lj_jit.h lj_ircall.h lj_iropt.h \
   lj_dispatch.h lj_bc.h lj_traceerr.h lj_ctype.h lj_cdata.h \
@@ -146,7 +146,7 @@ lj_obj.o: lj_obj.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h
 lj_parse.o: lj_parse.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
  lj_gc.h lj_err.h lj_errmsg.h lj_debug.h lj_buf.h lj_str.h lj_tab.h \
  lj_func.h lj_state.h lj_bc.h lj_ctype.h lj_strfmt.h lj_lex.h lj_parse.h \
- lj_vm.h lj_vmevent.h
+ lj_vm.h 
 lj_prng.o: lj_prng.c lj_def.h lua.h luaconf.h lj_arch.h lj_prng.h
 lj_serialize.o: lj_serialize.c lj_obj.h lua.h luaconf.h lj_def.h \
  lj_arch.h lj_err.h lj_errmsg.h lj_buf.h lj_gc.h lj_str.h lj_tab.h \
@@ -169,9 +169,6 @@ lj_tab.o: lj_tab.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
  lj_err.h lj_errmsg.h lj_tab.h
 lj_udata.o: lj_udata.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
  lj_gc.h lj_err.h lj_errmsg.h lj_udata.h
-lj_vmevent.o: lj_vmevent.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
- lj_str.h lj_tab.h lj_state.h lj_dispatch.h lj_bc.h lj_jit.h lj_ir.h \
- lj_vm.h lj_vmevent.h
 lj_vmmath.o: lj_vmmath.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
  lj_ir.h lj_vm.h
 luajit.o: luajit.c lua.h luaconf.h lauxlib.h lualib.h luajit.h lj_arch.h

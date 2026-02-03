@@ -26,7 +26,6 @@
 #endif
 #include "lj_dispatch.h"
 #include "lj_vm.h"
-#include "lj_vmevent.h"
 
 #define GCSTEPSIZE     1024u
 #define GCSWEEPMAX     40
@@ -475,7 +474,6 @@ static void gc_call_finalizer(global_State* g, lua_State* L, cTValue* mo, GCobj*
     hook_restore(g, oldh);
     g->gc.threshold = oldt; /* Restore GC threshold. */
     if (errcode) {
-        lj_vmevent_send(g, ERRFIN, copyTV(V, V->top++, L->top - 1););
         L->top--;
     }
 }
