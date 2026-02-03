@@ -8,7 +8,6 @@
 
 #include "lj_obj.h"
 #include "lj_ir.h"
-#include "lj_jit.h"
 
 /* C call info for CALL* instructions. */
 typedef struct CCallInfo {
