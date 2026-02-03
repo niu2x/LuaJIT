@@ -8,8 +8,5 @@
 
 #include "lj_obj.h"
 
-#if LJ_HASFFI
-LJ_FUNC void lj_mcode_sync(void* start, void* end);
-#endif
 
 #endif

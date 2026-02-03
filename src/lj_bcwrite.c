@@ -10,9 +10,6 @@
 #include "lj_gc.h"
 #include "lj_buf.h"
 #include "lj_bc.h"
-#if LJ_HASFFI
-    #include "lj_ctype.h"
-#endif
 #include "lj_strfmt.h"
 #include "lj_bcdump.h"
 #include "lj_vm.h"
@@ -209,19 +206,6 @@ static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
         } else if (o->gch.gct == ~LJ_TPROTO) {
             lj_assertBCW((pt->flags & PROTO_CHILD), "prototype has unexpected child");
             tp = BCDUMP_KGC_CHILD;
-#if LJ_HASFFI
-        } else if (o->gch.gct == ~LJ_TCDATA) {
-            CTypeID id = gco2cd(o)->ctypeid;
-            need       = 1 + 4 * 5;
-            if (id == CTID_INT64) {
-                tp = BCDUMP_KGC_I64;
-            } else if (id == CTID_UINT64) {
-                tp = BCDUMP_KGC_U64;
-            } else {
-                lj_assertBCW(id == CTID_COMPLEX_DOUBLE, "bad cdata constant CTID %d", id);
-                tp = BCDUMP_KGC_COMPLEX;
-            }
-#endif
         } else {
             lj_assertBCW(o->gch.gct == ~LJ_TTAB, "bad constant GC type %d", o->gch.gct);
             tp   = BCDUMP_KGC_TAB;
@@ -236,16 +220,6 @@ static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
         } else if (tp == BCDUMP_KGC_TAB) {
             bcwrite_ktab(ctx, p, gco2tab(o));
             continue;
-#if LJ_HASFFI
-        } else if (tp != BCDUMP_KGC_CHILD) {
-            cTValue* q = (TValue*)cdataptr(gco2cd(o));
-            p          = lj_strfmt_wuleb128(p, q[0].u32.lo);
-            p          = lj_strfmt_wuleb128(p, q[0].u32.hi);
-            if (tp == BCDUMP_KGC_COMPLEX) {
-                p = lj_strfmt_wuleb128(p, q[1].u32.lo);
-                p = lj_strfmt_wuleb128(p, q[1].u32.hi);
-            }
-#endif
         }
         ctx->sb.w = p;
     }

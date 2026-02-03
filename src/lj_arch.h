@@ -418,12 +418,6 @@
     #define LJ_FR2 0
 #endif
 
-/* Disable or enable the FFI extension. */
-#if defined(LUAJIT_DISABLE_FFI) || defined(LJ_ARCH_NOFFI)
-    #define LJ_HASFFI 0
-#else
-    #define LJ_HASFFI 1
-#endif
 
 /* Disable or enable the string buffer extension. */
 #if defined(LUAJIT_DISABLE_BUFFER)

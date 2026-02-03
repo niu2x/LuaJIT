@@ -118,26 +118,6 @@ SBuf* lj_buf_putmem(SBuf* sb, const void* q, MSize len)
     return sb;
 }
 
-#if LJ_HASFFI
-static LJ_NOINLINE SBuf* LJ_FASTCALL lj_buf_putchar2(SBuf* sb, int c)
-{
-    char* w = lj_buf_more2(sb, 1);
-    *w++    = (char)c;
-    sb->w   = w;
-    return sb;
-}
-
-SBuf* LJ_FASTCALL lj_buf_putchar(SBuf* sb, int c)
-{
-    char* w = sb->w;
-    if (LJ_LIKELY(w < sb->e)) {
-        *w++  = (char)c;
-        sb->w = w;
-        return sb;
-    }
-    return lj_buf_putchar2(sb, c);
-}
-#endif
 
 SBuf* LJ_FASTCALL lj_buf_putstr(SBuf* sb, GCstr* s)
 {

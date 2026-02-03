@@ -542,14 +542,9 @@ enum {
 
 #define setvmstate(g, st) ((g)->vmstate = ~LJ_VMST_##st)
 
-/* Metamethods. ORDER MM */
-#ifdef LJ_HASFFI
-    #define MMDEF_FFI(_) _(new)
-#else
-    #define MMDEF_FFI(_)
-#endif
+#define MMDEF_FFI(_)
 
-#if LJ_52 || LJ_HASFFI
+#if LJ_52
     #define MMDEF_PAIRS(_) _(pairs) _(ipairs)
 #else
     #define MMDEF_PAIRS(_)
@@ -583,9 +578,6 @@ typedef enum {
     GCROOT_BASEMT_NUM = GCROOT_BASEMT + ~LJ_TNUMX,
     GCROOT_IO_INPUT, /* Userdata for default I/O input file. */
     GCROOT_IO_OUTPUT, /* Userdata for default I/O output file. */
-#if LJ_HASFFI
-    GCROOT_FFI_FIN, /* FFI finalizer table. */
-#endif
     GCROOT_MAX
 } GCRootID;
 

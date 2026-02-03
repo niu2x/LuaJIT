@@ -149,9 +149,6 @@ static LJ_AINLINE void lj_bufx_free(lua_State* L, SBufExt* sbx)
 
 /* Low-level buffer put operations */
 LJ_FUNC SBuf* lj_buf_putmem(SBuf* sb, const void* q, MSize len);
-#if LJ_HASFFI
-LJ_FUNC SBuf* LJ_FASTCALL lj_buf_putchar(SBuf* sb, int c);
-#endif
 LJ_FUNC SBuf* LJ_FASTCALL lj_buf_putstr(SBuf* sb, GCstr* s);
 
 static LJ_AINLINE char* lj_buf_wmem(char* p, const void* q, MSize len)

@@ -25,10 +25,6 @@
 #include "lj_meta.h"
 #include "lj_state.h"
 #include "lj_frame.h"
-#if LJ_HASFFI
-    #include "lj_ctype.h"
-    #include "lj_cconv.h"
-#endif
 #include "lj_bc.h"
 #include "lj_ff.h"
 #include "lj_dispatch.h"
@@ -86,7 +82,7 @@ LJLIB_REC(.)
     return FFH_UNREACHABLE;
 }
 
-#if LJ_52 || LJ_HASFFI
+#if LJ_52
 static int ffh_pairs(lua_State* L, MMS mm)
 {
     TValue*  o  = lj_lib_checkany(L, 1);
@@ -304,29 +300,6 @@ LJLIB_REC(.)
             copyTV(L, L->base-1-LJ_FR2, o);
             return FFH_RES(1);
         }
-#if LJ_HASFFI
-        if (tviscdata(o)) {
-            CTState* cts = ctype_cts(L);
-            CType*   ct  = lj_ctype_rawref(cts, cdataV(o)->ctypeid);
-            if (ctype_isenum(ct->info))
-                ct = ctype_child(cts, ct);
-            if (ctype_isnum(ct->info) || ctype_iscomplex(ct->info)) {
-                if (LJ_DUALNUM && ctype_isinteger_or_bool(ct->info) && ct->size <= 4
-                    && !(ct->size == 4 && (ct->info & CTF_UNSIGNED))) {
-                    int32_t i;
-                    lj_cconv_ct_tv(cts, ctype_get(cts, CTID_INT32), (uint8_t*)&i, o, 0);
-                    setintV(L->base-1-LJ_FR2, i);
-                    return FFH_RES(1);
-                }
-                lj_cconv_ct_tv(cts,
-                               ctype_get(cts, CTID_DOUBLE),
-                               (uint8_t*)&(L->base-1-LJ_FR2)->n,
-                               o,
-                               0);
-                return FFH_RES(1);
-            }
-        }
-#endif
     } else {
         const char*   p = strdata(lj_lib_checkstr(L, 1));
         char*         ep;

@@ -19,9 +19,6 @@
 #include "lj_bc.h"
 #include "lj_ff.h"
 #include "lj_strfmt.h"
-#if LJ_HASFFI
-    #include "lj_ccallback.h"
-#endif
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "luajit.h"

@@ -20,10 +20,6 @@
 #include "lj_meta.h"
 #include "lj_state.h"
 #include "lj_frame.h"
-#if LJ_HASFFI
-    #include "lj_ctype.h"
-    #include "lj_cdata.h"
-#endif
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 
@@ -194,11 +190,6 @@ static int gc_traverse_tab(global_State* g, GCtab* t)
                 weak |= LJ_GC_WEAKVAL;
         }
         if (weak) { /* Weak tables are cleared in the atomic phase. */
-#if LJ_HASFFI
-            if (gcref(g->gcroot[GCROOT_FFI_FIN]) == obj2gco(t)) {
-                weak = (int)(~0u & ~LJ_GC_WEAKVAL);
-            } else
-#endif
             {
                 t->marked = (uint8_t)((t->marked & ~LJ_GC_WEAK) | weak);
                 setgcrefr(t->gclist, g->gc.weak);
@@ -348,11 +339,7 @@ typedef void(LJ_FASTCALL* GCFreeFunc)(global_State* g, GCobj* o);
 static const GCFreeFunc gc_freefunc[] = { (GCFreeFunc)lj_str_free,   (GCFreeFunc)lj_func_freeuv,
                                           (GCFreeFunc)lj_state_free, (GCFreeFunc)lj_func_freeproto,
                                           (GCFreeFunc)lj_func_free,  (GCFreeFunc)0,
-#if LJ_HASFFI
-                                          (GCFreeFunc)lj_cdata_free,
-#else
   (GCFreeFunc)0,
-#endif
                                           (GCFreeFunc)lj_tab_free,   (GCFreeFunc)lj_udata_free };
 
 /* Full sweep of a GC list. */
@@ -490,25 +477,6 @@ static void gc_finalize(lua_State* L)
         setgcrefnull(g->gc.mmudata);
     else
         setgcrefr(gcref(g->gc.mmudata)->gch.nextgc, o->gch.nextgc);
-#if LJ_HASFFI
-    if (o->gch.gct == ~LJ_TCDATA) {
-        TValue tmp, *tv;
-        /* Add cdata back to the GC list and make it white. */
-        setgcrefr(o->gch.nextgc, g->gc.root);
-        setgcref(g->gc.root, o);
-        makewhite(g, o);
-        o->gch.marked &= (uint8_t)~LJ_GC_CDATA_FIN;
-        /* Resolve finalizer. */
-        setcdataV(L, &tmp, gco2cd(o));
-        tv = lj_tab_set(L, tabref(g->gcroot[GCROOT_FFI_FIN]), &tmp);
-        if (!tvisnil(tv)) {
-            copyTV(L, &tmp, tv);
-            setnilV(tv); /* Clear entry in finalizer table. */
-            gc_call_finalizer(g, L, &tmp, o);
-        }
-        return;
-    }
-#endif
     /* Add userdata back to the main userdata list and make it white. */
     setgcrefr(o->gch.nextgc, mainthread(g)->nextgc);
     setgcref(mainthread(g)->nextgc, o);
@@ -526,27 +494,6 @@ void lj_gc_finalize_udata(lua_State* L)
         gc_finalize(L);
 }
 
-#if LJ_HASFFI
-/* Finalize all cdata objects from finalizer table. */
-void lj_gc_finalize_cdata(lua_State* L)
-{
-    global_State* g    = G(L);
-    GCtab*        t    = tabref(g->gcroot[GCROOT_FFI_FIN]);
-    Node*         node = noderef(t->node);
-    ptrdiff_t     i;
-    setgcrefnull(t->metatable); /* Mark finalizer table as disabled. */
-    for (i = (ptrdiff_t)t->hmask; i >= 0; i--)
-        if (!tvisnil(&node[i].val) && tviscdata(&node[i].key)) {
-            GCobj* o = gcV(&node[i].key);
-            TValue tmp;
-            makewhite(g, o);
-            o->gch.marked &= (uint8_t)~LJ_GC_CDATA_FIN;
-            copyTV(L, &tmp, &node[i].val);
-            setnilV(&node[i].val);
-            gc_call_finalizer(g, L, &tmp, o);
-        }
-}
-#endif
 
 /* Free all remaining GC objects. */
 void lj_gc_freeall(global_State* g)

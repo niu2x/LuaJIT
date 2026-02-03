@@ -16,9 +16,6 @@
 #include "lj_state.h"
 #include "lj_char.h"
 #include "lj_strfmt.h"
-#if LJ_HASFFI
-    #include "lj_ctype.h"
-#endif
 #include "lj_lib.h"
 
 /* -- Format parser ------------------------------------------------------- */
@@ -433,15 +430,6 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
                             lj_strfmt_putfxint(sb, sf, k);
                         break;
                     }
-#if LJ_HASFFI
-                    if (tviscdata(o)) {
-                        GCcdata* cd = cdataV(o);
-                        if (cd->ctypeid == CTID_INT64 || cd->ctypeid == CTID_UINT64) {
-                            lj_strfmt_putfxint(sb, sf, *(uint64_t*)cdataptr(cd));
-                            break;
-                        }
-                    }
-#endif
                     lj_strfmt_putfnum_int(sb, sf, lj_lib_checknum(L, arg));
                     break;
                 case STRFMT_UINT:
@@ -449,15 +437,6 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
                         lj_strfmt_putfxint(sb, sf, intV(o));
                         break;
                     }
-#if LJ_HASFFI
-                    if (tviscdata(o)) {
-                        GCcdata* cd = cdataV(o);
-                        if (cd->ctypeid == CTID_INT64 || cd->ctypeid == CTID_UINT64) {
-                            lj_strfmt_putfxint(sb, sf, *(uint64_t*)cdataptr(cd));
-                            break;
-                        }
-                    }
-#endif
                     lj_strfmt_putfnum_uint(sb, sf, lj_lib_checknum(L, arg));
                     break;
                 case STRFMT_NUM:

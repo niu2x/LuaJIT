@@ -20,11 +20,6 @@
     #include "lj_tab.h"
     #include "lj_udata.h"
     #include "lj_meta.h"
-    #if LJ_HASFFI
-        #include "lj_ctype.h"
-        #include "lj_cdata.h"
-        #include "lj_cconv.h"
-    #endif
     #include "lj_strfmt.h"
     #include "lj_serialize.h"
     #include "lj_lib.h"
@@ -94,13 +89,6 @@ LJLIB_REC(.)
     GCobj*      ref;
     const char* p;
     MSize       len;
-    #if LJ_HASFFI
-    if (tviscdata(L->base + 1)) {
-        CTState* cts = ctype_cts(L);
-        lj_cconv_ct_tv(cts, ctype_get(cts, CTID_P_CVOID), (uint8_t*)&p, L->base + 1, CCF_ARG(2));
-        len = (MSize)lj_lib_checkintrange(L, 3, 0, LJ_MAX_BUF);
-    } else
-    #endif
     {
         GCstr* str = lj_lib_checkstrx(L, 2);
         p          = strdata(str);
@@ -188,65 +176,6 @@ LJLIB_REC(.)
     return (int)(narg - 1);
 }
 
-    #if LJ_HASFFI
-LJLIB_CF(buffer_method_putcdata) 
-LJLIB_REC(.)
-{
-    SBufExt*    sbx = buffer_tobufw(L);
-    const char* p;
-    MSize       len;
-    if (tviscdata(L->base + 1)) {
-        CTState* cts = ctype_cts(L);
-        lj_cconv_ct_tv(cts, ctype_get(cts, CTID_P_CVOID), (uint8_t*)&p, L->base + 1, CCF_ARG(2));
-    } else {
-        lj_err_argtype(L, 2, "cdata");
-    }
-    len = (MSize)lj_lib_checkintrange(L, 3, 0, LJ_MAX_BUF);
-    lj_buf_putmem((SBuf*)sbx, p, len);
-    L->top = L->base + 1; /* Chain buffer object. */
-    return 1;
-}
-
-LJLIB_CF(buffer_method_reserve) 
-LJLIB_REC(.)
-{
-    SBufExt* sbx = buffer_tobufw(L);
-    MSize    sz  = (MSize)lj_lib_checkintrange(L, 2, 0, LJ_MAX_BUF);
-    GCcdata* cd;
-    lj_buf_more((SBuf*)sbx, sz);
-    ctype_loadffi(L);
-    cd                    = lj_cdata_new_(L, CTID_P_UINT8, CTSIZE_PTR);
-    *(void**)cdataptr(cd) = sbx->w;
-    setcdataV(L, L->top++, cd);
-    setintV(L->top++, sbufleft(sbx));
-    return 2;
-}
-
-LJLIB_CF(buffer_method_commit) 
-LJLIB_REC(.)
-{
-    SBufExt* sbx = buffer_tobuf(L);
-    MSize    len = (MSize)lj_lib_checkintrange(L, 2, 0, LJ_MAX_BUF);
-    if (len > sbufleft(sbx))
-        lj_err_arg(L, 2, LJ_ERR_NUMRNG);
-    sbx->w += len;
-    L->top = L->base + 1; /* Chain buffer object. */
-    return 1;
-}
-
-LJLIB_CF(buffer_method_ref) 
-LJLIB_REC(.)
-{
-    SBufExt* sbx = buffer_tobuf(L);
-    GCcdata* cd;
-    ctype_loadffi(L);
-    cd                    = lj_cdata_new_(L, CTID_P_UINT8, CTSIZE_PTR);
-    *(void**)cdataptr(cd) = sbx->r;
-    setcdataV(L, L->top++, cd);
-    setintV(L->top++, sbufxlen(sbx));
-    return 2;
-}
-    #endif
 
 LJLIB_CF(buffer_method_encode) 
 LJLIB_REC(.)

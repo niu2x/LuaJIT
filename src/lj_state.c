@@ -19,9 +19,6 @@
 #include "lj_meta.h"
 #include "lj_state.h"
 #include "lj_frame.h"
-#if LJ_HASFFI
-    #include "lj_ctype.h"
-#endif
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "lj_prng.h"
@@ -193,9 +190,6 @@ static TValue* cpluaopen(lua_State* L, lua_CFunction dummy, void* ud)
     fixstring(lj_err_str(L, LJ_ERR_ERRMEM)); /* Preallocate memory error msg. */
     fixstring(lj_err_str(L, LJ_ERR_ERRERR)); /* Preallocate err in err msg. */
     g->gc.threshold = 4 * g->gc.total;
-#if LJ_HASFFI
-    lj_ctype_initfin(L);
-#endif
     lj_err_verify();
     setgcref(g->vmthref, obj2gco(lj_state_new(L)));
     return NULL;
@@ -208,9 +202,6 @@ static void close_state(lua_State* L)
     lj_gc_freeall(g);
     lj_assertG(gcref(g->gc.root) == obj2gco(L), "main thread is not first GC object");
     lj_assertG(g->str.num == 0, "leaked %d strings", g->str.num);
-#if LJ_HASFFI
-    lj_ctype_freestate(g);
-#endif
     lj_str_freetab(g);
     lj_buf_free(g, &g->tmpbuf);
     lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
@@ -365,10 +356,6 @@ void LJ_FASTCALL lj_state_free(global_State* g, lua_State* L)
     lj_assertG(L != mainthread(g), "free of main thread");
     if (obj2gco(L) == gcref(g->cur_L))
         setgcrefnull(g->cur_L);
-#if LJ_HASFFI
-    if (ctype_ctsG(g) && ctype_ctsG(g)->L == L) /* Avoid dangling cts->L. */
-        ctype_ctsG(g)->L = mainthread(g);
-#endif
     if (gcref(L->openupval) != NULL) {
         lj_func_closeuv(L, tvref(L->stack));
         lj_assertG(gcref(L->openupval) == NULL, "stale open upvalues");

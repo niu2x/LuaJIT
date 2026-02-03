@@ -18,9 +18,6 @@
 #include "lj_tab.h"
 #include "lj_state.h"
 #include "lj_bc.h"
-#if LJ_HASFFI
-    #include "lj_ctype.h"
-#endif
 
 #include "lj_dispatch.h"
 #include "lj_vm.h"
@@ -108,9 +105,9 @@ LJLIB_SET(version)
 
 #define LJLIB_MODULE_jit_util
 
-    /* -- Reflection API for Lua functions ------------------------------------ */
+/* -- Reflection API for Lua functions ------------------------------------ */
 
-    static void setintfield(lua_State* L, GCtab* t, const char* name, int32_t val)
+static void setintfield(lua_State* L, GCtab* t, const char* name, int32_t val)
 {
     setintV(lj_tab_setstr(L, t, lj_str_newz(L, name)), val);
 }
