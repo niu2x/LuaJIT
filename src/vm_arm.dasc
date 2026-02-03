@@ -2602,100 +2602,14 @@ static void build_subroutines(BuildCtx *ctx)
   |// Handler for callback functions.
   |// Saveregs already performed. Callback slot number in [sp], g in r12.
   |->vm_ffi_callback:
-  |.if FFI
-  |.type CTSTATE, CTState, PC
-  |  ldr CTSTATE, GL:r12->ctype_state
-  |   add DISPATCH, r12, #GG_G2DISP
-  |.if FPU
-  |  str r4, SAVE_R4
-  |  add r4, sp, CFRAME_SPACE+4+8*8
-  |  vstmdb r4!, {d8-d15}
-  |.endif
-  |.if HFABI
-  |  add r12, CTSTATE, #offsetof(CTState, cb.fpr[8])
-  |.endif
-  |  strd CARG34, CTSTATE->cb.gpr[2]
-  |  strd CARG12, CTSTATE->cb.gpr[0]
-  |.if HFABI
-  |  vstmdb r12!, {d0-d7}
-  |.endif
-  |  ldr CARG4, [sp]
-  |   add CARG3, sp, #CFRAME_SIZE
-  |    mov CARG1, CTSTATE
-  |  lsr CARG4, CARG4, #3
-  |   str CARG3, CTSTATE->cb.stack
-  |    mov CARG2, sp
-  |  str CARG4, CTSTATE->cb.slot
-  |  str CTSTATE, SAVE_PC		// Any value outside of bytecode is ok.
-  |  bl extern lj_ccallback_enter	// (CTState *cts, void *cf)
-  |  // Returns lua_State *.
-  |  ldr BASE, L:CRET1->base
-  |    mv_vmstate CARG2, INTERP
-  |  ldr RC, L:CRET1->top
-  |    mov MASKR8, #255
-  |   ldr LFUNC:CARG3, [BASE, FRAME_FUNC]
-  |    mov L, CRET1
-  |  sub RC, RC, BASE
-  |    lsl MASKR8, MASKR8, #3		// MASKR8 = 255*8.
-  |    st_vmstate CARG2
-  |  ins_callt
-  |.endif
+ 
   |
   |->cont_ffi_callback:			// Return from FFI callback.
-  |.if FFI
-  |  ldr CTSTATE, [DISPATCH, #DISPATCH_GL(ctype_state)]
-  |   str BASE, L->base
-  |   str CARG4, L->top
-  |  str L, CTSTATE->L
-  |  mov CARG1, CTSTATE
-  |  mov CARG2, RA
-  |  bl extern lj_ccallback_leave	// (CTState *cts, TValue *o)
-  |  ldrd CARG12, CTSTATE->cb.gpr[0]
-  |.if HFABI
-  |  vldr d0, CTSTATE->cb.fpr[0]
-  |.endif
-  |  b ->vm_leave_unw
-  |.endif
+
   |
   |->vm_ffi_call:			// Call C function via FFI.
   |  // Caveat: needs special frame unwinding, see below.
-  |.if FFI
-  |  .type CCSTATE, CCallState, r4
-  |  push {CCSTATE, r5, r11, lr}
-  |  mov CCSTATE, CARG1
-  |  ldr CARG1, CCSTATE:CARG1->spadj
-  |   ldrb CARG2, CCSTATE->nsp
-  |    add CARG3, CCSTATE, #offsetof(CCallState, stack)
-  |.if HFABI
-  |  add RB, CCSTATE, #offsetof(CCallState, fpr[0])
-  |.endif
-  |  mov r11, sp
-  |  sub sp, sp, CARG1			// Readjust stack.
-  |   subs CARG2, CARG2, #4
-  |.if HFABI
-  |  vldm RB, {d0-d7}
-  |.endif
-  |    ldr RB, CCSTATE->func
-  |   bmi >2
-  |1:  // Copy stack slots.
-  |  ldr CARG4, [CARG3, CARG2]
-  |  str CARG4, [sp, CARG2]
-  |  subs CARG2, CARG2, #4
-  |  bpl <1
-  |2:
-  |  ldrd CARG12, CCSTATE->gpr[0]
-  |  ldrd CARG34, CCSTATE->gpr[2]
-  |  blx RB
-  |  mov sp, r11
-  |.if HFABI
-  |  add r12, CCSTATE, #offsetof(CCallState, fpr[4])
-  |.endif
-  |  strd CRET1, CCSTATE->gpr[0]
-  |.if HFABI
-  |  vstmdb r12!, {d0-d3}
-  |.endif
-  |  pop {CCSTATE, r5, r11, pc}
-  |.endif
+
   |// Note: vm_ffi_call must be the last function in this object file!
   |
   |//-----------------------------------------------------------------------
@@ -2826,11 +2740,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  bls ->BC_ISNEN_Z
     }
     |  // Either or both types are not numbers.
-    |.if FFI
-    |  checktp CARG2, LJ_TCDATA
-    |  checktpne CARG4, LJ_TCDATA
-    |  beq ->vmeta_equal_cd
-    |.endif
+
     |  cmp CARG2, CARG4			// Compare types.
     |  bne >2				// Not the same type?
     |  checktp CARG2, LJ_TISPRI
@@ -2886,12 +2796,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |    add PC, PC, #4
     |    add RB, PC, RB, lsl #2
     |  checktp CARG2, LJ_TSTR
-    |.if FFI
-    |  bne >7
-    |  cmp CARG1, CARG3
-    |.else
     |  cmpeq CARG1, CARG3
-    |.endif
     if (vk) {
       |  subeq PC, RB, #0x20000
       |1:
@@ -2901,12 +2806,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     }
     |  ins_next
     |
-    |.if FFI
-    |7:
-    |  checktp CARG2, LJ_TCDATA
-    |  bne <1
-    |  b ->vmeta_equal_cd
-    |.endif
+
     break;
 
   case BC_ISEQN: case BC_ISNEN:
@@ -2939,14 +2839,11 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     |
     |3:  // CARG12 is not an integer.
-    |.if FFI
-    |  bhi >7
-    |.else
+
     if (!vk) {
       |  subhi PC, RB, #0x20000
     }
     |  bhi <2
-    |.endif
     |.if FPU
     |  checktp CARG4, LJ_TISNUM
     |  vmov s4, CARG3
@@ -2989,12 +2886,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  b <2
     |.endif
     |
-    |.if FFI
-    |7:
-    |  checktp CARG2, LJ_TCDATA
-    |  bne <1
-    |  b ->vmeta_equal_cd
-    |.endif
+
     break;
 
   case BC_ISEQP: case BC_ISNEP:
@@ -3005,10 +2897,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   add PC, PC, #4
     |  mvn RC, RC
     |   add RB, PC, RB, lsl #2
-    |.if FFI
-    |  checktp CARG2, LJ_TCDATA
-    |  beq ->vmeta_equal_cd
-    |.endif
+
     |  cmp CARG2, RC
     if (vk) {
       |  subeq PC, RB, #0x20000
@@ -3359,16 +3248,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   ins_next3
     break;
   case BC_KCDATA:
-    |.if FFI
-    |  // RA = dst*8, RC = cdata_const (~)
-    |  mvn RC, RC
-    |   ins_next1
-    |  ldr CARG1, [KBASE, RC, lsl #2]
-    |  mvn CARG2, #~LJ_TCDATA
-    |   ins_next2
-    |  strd CARG12, [BASE, RA]
-    |   ins_next3
-    |.endif
+
     break;
   case BC_KSHORT:
     |  // RA = dst*8, (RC = int16_literal)

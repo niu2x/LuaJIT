@@ -697,10 +697,6 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov RC, RA				// ... in [RC]
   |  mov PC, [RB-24]			// Restore PC from [cont|PC].
   |  mov RA, qword [RB-32]		// May be negative on WIN64 with debug.
-  |.if FFI
-  |  cmp RA, 1
-  |  jbe >1
-  |.endif
   |  mov LFUNC:KBASE, [BASE-16]
   |  cleartp LFUNC:KBASE
   |  mov KBASE, LFUNC:KBASE->pc
@@ -708,15 +704,6 @@ static void build_subroutines(BuildCtx *ctx)
   |  // BASE = base, RC = result, RB = meta base
   |  jmp RA				// Jump to continuation.
   |
-  |.if FFI
-  |1:
-  |  je ->cont_ffi_callback		// cont = 1: return from FFI callback.
-  |  // cont = 0: Tail call from C function.
-  |  sub RB, BASE
-  |  shr RBd, 3
-  |  lea RDd, [RBd-3]
-  |  jmp ->vm_call_tail
-  |.endif
   |
   |->cont_cat:				// BASE = base, RC = result, RB = mbase
   |  endbr
@@ -976,17 +963,6 @@ static void build_subroutines(BuildCtx *ctx)
   |  jmp <3
   |
   |->vmeta_equal_cd:
-  |.if FFI
-  |  sub PC, 4
-  |  mov L:RB, SAVE_L
-  |  mov L:RB->base, BASE
-  |  mov CARG1, L:RB
-  |  mov CARG2d, dword [PC-4]
-  |  mov SAVE_PC, PC
-  |  call extern lj_meta_equal_cd	// (lua_State *L, BCIns ins)
-  |  // 0/1 or TValue * (metamethod) returned in eax (RC).
-  |  jmp <3
-  |.endif
   |
   |->vmeta_istype:
   |  mov L:RB, SAVE_L
@@ -2752,119 +2728,11 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |// Handler for callback functions. Callback slot number in ah/al.
   |->vm_ffi_callback:
-  |.if FFI
-  |.type CTSTATE, CTState, PC
-  |  saveregs_	// ebp/rbp already saved. ebp now holds global_State *.
-  |  lea DISPATCH, [ebp+GG_G2DISP]
-  |  mov CTSTATE, GL:ebp->ctype_state
-  |  movzx eax, ax
-  |  mov CTSTATE->cb.slot, eax
-  |  mov CTSTATE->cb.gpr[0], CARG1
-  |  mov CTSTATE->cb.gpr[1], CARG2
-  |  mov CTSTATE->cb.gpr[2], CARG3
-  |  mov CTSTATE->cb.gpr[3], CARG4
-  |  movsd qword CTSTATE->cb.fpr[0], xmm0
-  |  movsd qword CTSTATE->cb.fpr[1], xmm1
-  |  movsd qword CTSTATE->cb.fpr[2], xmm2
-  |  movsd qword CTSTATE->cb.fpr[3], xmm3
-  |.if X64WIN
-  |  lea rax, [rsp+CFRAME_SIZE+4*8]
-  |.else
-  |  lea rax, [rsp+CFRAME_SIZE]
-  |  mov CTSTATE->cb.gpr[4], CARG5
-  |  mov CTSTATE->cb.gpr[5], CARG6
-  |  movsd qword CTSTATE->cb.fpr[4], xmm4
-  |  movsd qword CTSTATE->cb.fpr[5], xmm5
-  |  movsd qword CTSTATE->cb.fpr[6], xmm6
-  |  movsd qword CTSTATE->cb.fpr[7], xmm7
-  |.endif
-  |  mov CTSTATE->cb.stack, rax
-  |  mov CARG2, rsp
-  |  mov SAVE_PC, CTSTATE		// Any value outside of bytecode is ok.
-  |  mov CARG1, CTSTATE
-  |  call extern lj_ccallback_enter	// (CTState *cts, void *cf)
-  |  // lua_State * returned in eax (RD).
-  |  set_vmstate INTERP
-  |  mov BASE, L:RD->base
-  |  mov RD, L:RD->top
-  |  sub RD, BASE
-  |  mov LFUNC:RB, [BASE-16]
-  |  cleartp LFUNC:RB
-  |  shr RD, 3
-  |  add RD, 1
-  |  ins_callt
-  |.endif
   |
   |->cont_ffi_callback:			// Return from FFI callback.
-  |.if FFI
-  |  mov L:RA, SAVE_L
-  |  mov CTSTATE, [DISPATCH+DISPATCH_GL(ctype_state)]
-  |  mov aword CTSTATE->L, L:RA
-  |  mov L:RA->base, BASE
-  |  mov L:RA->top, RB
-  |  mov CARG1, CTSTATE
-  |  mov CARG2, RC
-  |  call extern lj_ccallback_leave	// (CTState *cts, TValue *o)
-  |  mov rax, CTSTATE->cb.gpr[0]
-  |  movsd xmm0, qword CTSTATE->cb.fpr[0]
-  |  jmp ->vm_leave_unw
-  |.endif
   |
   |->vm_ffi_call:			// Call C function via FFI.
   |  // Caveat: needs special frame unwinding, see below.
-  |.if FFI
-  |  .type CCSTATE, CCallState, rbx
-  |  push rbp; mov rbp, rsp; push rbx; mov CCSTATE, CARG1
-  |
-  |  // Readjust stack.
-  |  mov eax, CCSTATE->spadj
-  |  sub rsp, rax
-  |
-  |  // Copy stack slots.
-  |  movzx ecx, byte CCSTATE->nsp
-  |  sub ecx, 8
-  |  js >2
-  |1:
-  |  mov rax, [CCSTATE+rcx+offsetof(CCallState, stack)]
-  |  mov [rsp+rcx+CCALL_SPS_EXTRA*8], rax
-  |  sub ecx, 8
-  |  jns <1
-  |2:
-  |
-  |  movzx eax, byte CCSTATE->nfpr
-  |  mov CARG1, CCSTATE->gpr[0]
-  |  mov CARG2, CCSTATE->gpr[1]
-  |  mov CARG3, CCSTATE->gpr[2]
-  |  mov CARG4, CCSTATE->gpr[3]
-  |.if not X64WIN
-  |  mov CARG5, CCSTATE->gpr[4]
-  |  mov CARG6, CCSTATE->gpr[5]
-  |.endif
-  |  test eax, eax; jz >5
-  |  movaps xmm0, CCSTATE->fpr[0]
-  |  movaps xmm1, CCSTATE->fpr[1]
-  |  movaps xmm2, CCSTATE->fpr[2]
-  |  movaps xmm3, CCSTATE->fpr[3]
-  |.if not X64WIN
-  |  cmp eax, 4; jbe >5
-  |  movaps xmm4, CCSTATE->fpr[4]
-  |  movaps xmm5, CCSTATE->fpr[5]
-  |  movaps xmm6, CCSTATE->fpr[6]
-  |  movaps xmm7, CCSTATE->fpr[7]
-  |.endif
-  |5:
-  |
-  |  call aword CCSTATE->func
-  |
-  |  mov CCSTATE->gpr[0], rax
-  |  movaps CCSTATE->fpr[0], xmm0
-  |.if not X64WIN
-  |  mov CCSTATE->gpr[1], rdx
-  |  movaps CCSTATE->fpr[1], xmm1
-  |.endif
-  |
-  |  mov rbx, [rbp-8]; leave; ret
-  |.endif
   |// Note: vm_ffi_call must be the last function in this object file!
   |
   |//-----------------------------------------------------------------------
@@ -3065,10 +2933,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |
     if (op == BC_ISEQV || op == BC_ISNEV) {
       |5:  // Either or both types are not numbers.
-      |.if FFI
-      |  cmp RBd, LJ_TCDATA; je ->vmeta_equal_cd
-      |  cmp ITYPEd, LJ_TCDATA; je ->vmeta_equal_cd
-      |.endif
       |  cmp RA, RD
       |  je <1				// Same GCobjs or pvalues?
       |  cmp RBd, ITYPEd
@@ -3091,16 +2955,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       }
       |  jmp ->vmeta_equal		// Handle __eq metamethod.
     } else {
-      |.if FFI
-      |3:
-      |  cmp ITYPEd, LJ_TCDATA
-      if (LJ_DUALNUM && vk) {
-	|  jne <9
-      } else {
-	|  jne <2
-      }
-      |  jmp ->vmeta_equal_cd
-      |.endif
     }
     break;
   case BC_ISEQS: case BC_ISNES:
@@ -3476,13 +3330,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
   case BC_KCDATA:
-    |.if FFI
-    |  ins_AND	// RA = dst, RD = cdata const (~)
-    |  mov RD, [KBASE+RD*8]
-    |  settp RD, LJ_TCDATA
-    |  mov [BASE+RA*8], RD
-    |  ins_next
-    |.endif
     break;
   case BC_KSHORT:
     |  ins_AD	// RA = dst, RD = signed int16 literal
