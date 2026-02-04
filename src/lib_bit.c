@@ -116,8 +116,8 @@ LJLIB_REC(.)
 
 #include "lj_libdef.h"
 
-LUALIB_API int luaopen_bit(lua_State* L)
+ int luaopen_bit(lua_State* L)
 {
-    LJ_LIB_REG(L, LUA_BITLIBNAME, bit);
+    LJ_LIB_REG(L, LUA_BIT_LIB_NAME, bit);
     return 1;
 }

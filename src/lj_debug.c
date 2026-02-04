@@ -570,7 +570,7 @@ LUA_API int lua_getstack(lua_State* L, int level, lua_Debug* ar)
 #define TRACEBACK_LEVELS1 12
 #define TRACEBACK_LEVELS2 10
 
-LUALIB_API void luaL_traceback(lua_State* L, lua_State* L1, const char* msg, int level)
+ void luaL_traceback(lua_State* L, lua_State* L1, const char* msg, int level)
 {
     int       top = (int)(L->top - L->base);
     int       lim = TRACEBACK_LEVELS1;

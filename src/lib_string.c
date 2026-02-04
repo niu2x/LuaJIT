@@ -741,11 +741,11 @@ LJLIB_REC(.)
 
 #include "lj_libdef.h"
 
-LUALIB_API int luaopen_string(lua_State* L)
+ int luaopen_string(lua_State* L)
 {
     GCtab*        mt;
     global_State* g;
-    LJ_LIB_REG(L, LUA_STRLIBNAME, string);
+    LJ_LIB_REG(L, LUA_STR_LIB_NAME, string);
     mt = lj_tab_new(L, 0, 1);
     /* NOBARRIER: basemt is a GC root. */
     g = G(L);
@@ -753,7 +753,7 @@ LUALIB_API int luaopen_string(lua_State* L)
     settabV(L, lj_tab_setstr(L, mt, mmname_str(g, MM_index)), tabV(L->top - 1));
     mt->nomm = (uint8_t)(~(1u << MM_index));
 #if LJ_HASBUFFER
-    lj_lib_prereg(L, LUA_STRLIBNAME ".buffer", luaopen_string_buffer, tabV(L->top - 1));
+    lj_lib_prereg(L, LUA_STR_LIB_NAME ".buffer", luaopen_string_buffer, tabV(L->top - 1));
 #endif
     return 1;
 }

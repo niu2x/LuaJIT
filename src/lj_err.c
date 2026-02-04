@@ -941,26 +941,26 @@ LUA_API int lua_error(lua_State* L)
     return 0; /* unreachable */
 }
 
-LUALIB_API int luaL_argerror(lua_State* L, int narg, const char* msg)
+ int luaL_argerror(lua_State* L, int narg, const char* msg)
 {
     err_argmsg(L, narg, msg);
     return 0; /* unreachable */
 }
 
-LUALIB_API int luaL_typerror(lua_State* L, int narg, const char* xname)
+ int luaL_typerror(lua_State* L, int narg, const char* xname)
 {
     lj_err_argtype(L, narg, xname);
     return 0; /* unreachable */
 }
 
-LUALIB_API void luaL_where(lua_State* L, int level)
+ void luaL_where(lua_State* L, int level)
 {
     int      size;
     cTValue* frame = lj_debug_frame(L, level, &size);
     lj_debug_addloc(L, "", frame, size ? frame + size : NULL);
 }
 
-LUALIB_API int luaL_error(lua_State* L, const char* fmt, ...)
+ int luaL_error(lua_State* L, const char* fmt, ...)
 {
     const char* msg;
     va_list     argp;

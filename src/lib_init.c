@@ -16,22 +16,22 @@
 #include "lj_arch.h"
 
 static const luaL_Reg lj_lib_load[] = { { "", luaopen_base },
-                                        { LUA_LOADLIBNAME, luaopen_package },
-                                        { LUA_TABLIBNAME, luaopen_table },
-                                        { LUA_IOLIBNAME, luaopen_io },
-                                        { LUA_OSLIBNAME, luaopen_os },
-                                        { LUA_STRLIBNAME, luaopen_string },
-                                        { LUA_MATHLIBNAME, luaopen_math },
-                                        { LUA_DBLIBNAME, luaopen_debug },
-                                        { LUA_BITLIBNAME, luaopen_bit },
-                                        { LUA_JITLIBNAME, luaopen_jit },
+                                        { LUA_LOAD_LIB_NAME, luaopen_package },
+                                        { LUA_TAB_LIB_NAME, luaopen_table },
+                                        { LUA_IO_LIB_NAME, luaopen_io },
+                                        { LUA_OS_LIB_NAME, luaopen_os },
+                                        { LUA_STR_LIB_NAME, luaopen_string },
+                                        { LUA_MATH_LIB_NAME, luaopen_math },
+                                        { LUA_DB_LIB_NAME, luaopen_debug },
+                                        { LUA_BIT_LIB_NAME, luaopen_bit },
+                                        { LUA_JIT_LIB_NAME, luaopen_jit },
                                         { NULL, NULL } };
 
 static const luaL_Reg lj_lib_preload[] = {
     { NULL, NULL }
 };
 
-LUALIB_API void luaL_openlibs(lua_State* L)
+ void luaL_openlibs(lua_State* L)
 {
     const luaL_Reg* lib;
     for (lib = lj_lib_load; lib->func; lib++) {

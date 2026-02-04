@@ -723,7 +723,7 @@ static void newproxy_weaktable(lua_State* L)
     t->nomm = (uint8_t)(~(1u << MM_mode));
 }
 
-LUALIB_API int luaopen_base(lua_State* L)
+ int luaopen_base(lua_State* L)
 {
     /* NOBARRIER: Table and value are the same. */
     GCtab* env = tabref(L->env);
@@ -731,6 +731,6 @@ LUALIB_API int luaopen_base(lua_State* L)
     lua_pushliteral(L, LUA_VERSION); /* top-3. */
     newproxy_weaktable(L); /* top-2. */
     LJ_LIB_REG(L, "_G", base);
-    LJ_LIB_REG(L, LUA_COLIBNAME, coroutine);
+    LJ_LIB_REG(L, LUA_CO_LIB_NAME, coroutine);
     return 2;
 }

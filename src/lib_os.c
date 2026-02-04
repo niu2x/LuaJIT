@@ -290,8 +290,8 @@ LJLIB_CF(os_setlocale)
 
 #include "lj_libdef.h"
 
-LUALIB_API int luaopen_os(lua_State* L)
+ int luaopen_os(lua_State* L)
 {
-    LJ_LIB_REG(L, LUA_OSLIBNAME, os);
+    LJ_LIB_REG(L, LUA_OS_LIB_NAME, os);
     return 1;
 }

@@ -415,8 +415,8 @@ LJLIB_CF(debug_traceback)
 
 #include "lj_libdef.h"
 
-LUALIB_API int luaopen_debug(lua_State* L)
+ int luaopen_debug(lua_State* L)
 {
-    LJ_LIB_REG(L, LUA_DBLIBNAME, debug);
+    LJ_LIB_REG(L, LUA_DB_LIB_NAME, debug);
     return 1;
 }

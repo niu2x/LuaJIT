@@ -616,14 +616,14 @@ static const lua_CFunction package_loaders[] = { lj_cf_package_loader_preload,
                                                  lj_cf_package_loader_croot,
                                                  NULL };
 
-LUALIB_API int luaopen_package(lua_State* L)
+ int luaopen_package(lua_State* L)
 {
     int i;
     int noenv;
     luaL_newmetatable(L, "_LOADLIB");
     lj_lib_pushcf(L, lj_cf_package_unloadlib, 1);
     lua_setfield(L, -2, "__gc");
-    luaL_register(L, LUA_LOADLIBNAME, package_lib);
+    luaL_register(L, LUA_LOAD_LIB_NAME, package_lib);
     lua_copy(L, -1, LUA_ENVIRONINDEX);
     lua_createtable(L, sizeof(package_loaders) / sizeof(package_loaders[0]) - 1, 0);
     for (i = 0; package_loaders[i] != NULL; i++) {

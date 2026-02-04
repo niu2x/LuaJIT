@@ -50,7 +50,7 @@ foreach foreachi getn maxn setn
 popen tmpfile seek setvbuf __tostring
 clock date difftime execute getenv rename setlocale time tmpname
 dump gfind len reverse
-LUA_LOADLIBNAME LUA_MATHLIBNAME LUA_DBLIBNAME
+LUA_LOAD_LIB_NAME LUA_MATH_LIB_NAME LUA_DB_LIB_NAME
 ]], "%S+", function(name)
   REMOVE_LIB[name] = true
 end)

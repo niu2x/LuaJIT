@@ -97,7 +97,7 @@ static const char* reader_file(lua_State* L, void* ud, size_t* size)
     return *size > 0 ? ctx->buf : NULL;
 }
 
-LUALIB_API int luaL_loadfilex(lua_State* L, const char* filename, const char* mode)
+ int luaL_loadfilex(lua_State* L, const char* filename, const char* mode)
 {
     FileReaderCtx ctx;
     int           status;
@@ -132,7 +132,7 @@ LUALIB_API int luaL_loadfilex(lua_State* L, const char* filename, const char* mo
     return status;
 }
 
-LUALIB_API int luaL_loadfile(lua_State* L, const char* filename)
+ int luaL_loadfile(lua_State* L, const char* filename)
 {
     return luaL_loadfilex(L, filename, NULL);
 }
@@ -153,7 +153,7 @@ static const char* reader_string(lua_State* L, void* ud, size_t* size)
     return ctx->str;
 }
 
-LUALIB_API int
+ int
 luaL_loadbufferx(lua_State* L, const char* buf, size_t size, const char* name, const char* mode)
 {
     StringReaderCtx ctx;
@@ -162,12 +162,12 @@ luaL_loadbufferx(lua_State* L, const char* buf, size_t size, const char* name, c
     return lua_loadx(L, reader_string, &ctx, name, mode);
 }
 
-LUALIB_API int luaL_loadbuffer(lua_State* L, const char* buf, size_t size, const char* name)
+ int luaL_loadbuffer(lua_State* L, const char* buf, size_t size, const char* name)
 {
     return luaL_loadbufferx(L, buf, size, name, NULL);
 }
 
-LUALIB_API int luaL_loadstring(lua_State* L, const char* s)
+ int luaL_loadstring(lua_State* L, const char* s)
 {
     return luaL_loadbuffer(L, s, strlen(s), s);
 }

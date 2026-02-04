@@ -560,13 +560,13 @@ static GCobj* io_std_new(lua_State* L, FILE* fp, const char* name)
     return obj2gco(ud);
 }
 
-LUALIB_API int luaopen_io(lua_State* L)
+ int luaopen_io(lua_State* L)
 {
     LJ_LIB_REG(L, NULL, io_method);
     copyTV(L, L->top, L->top-1);
     L->top++;
-    lua_setfield(L, LUA_REGISTRYINDEX, LUA_FILEHANDLE);
-    LJ_LIB_REG(L, LUA_IOLIBNAME, io);
+    lua_setfield(L, LUA_REGISTRYINDEX, LUA_FILE_HANDLE);
+    LJ_LIB_REG(L, LUA_IO_LIB_NAME, io);
     setgcref(G(L)->gcroot[GCROOT_IO_INPUT], io_std_new(L, stdin, "stdin"));
     setgcref(G(L)->gcroot[GCROOT_IO_OUTPUT], io_std_new(L, stdout, "stdout"));
     io_std_new(L, stderr, "stderr");

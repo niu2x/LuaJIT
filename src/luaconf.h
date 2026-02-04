@@ -136,8 +136,6 @@
     #define LUA_API extern
 #endif
 
-#define LUALIB_API LUA_API
-
 /* Compatibility support for assertions. */
 #if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
     #include <assert.h>
