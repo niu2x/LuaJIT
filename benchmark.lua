@@ -358,6 +358,142 @@ local function test_type(n)
     return count
 end
 
+-- 23. 位运算测试（模拟Lua5.1不支持的位运算）
+local function test_bitwise_operations(n)
+    local function bit_and(a, b)
+        local result = 0
+        local bit = 1
+        while a > 0 and b > 0 do
+            if a % 2 == 1 and b % 2 == 1 then
+                result = result + bit
+            end
+            a = math.floor(a / 2)
+            b = math.floor(b / 2)
+            bit = bit * 2
+        end
+        return result
+    end
+    
+    local sum = 0
+    for i = 1, n do
+        sum = sum + bit_and(i, 0xAAAAAAAA)
+    end
+    return sum
+end
+
+-- 24. 正则表达式测试
+local function test_regex(n)
+    local s = "The quick brown fox jumps over the lazy dog."
+    local count = 0
+    
+    for i = 1, n do
+        -- 匹配所有单词
+        local words = {}
+        for word in s:gmatch("%w+") do
+            table.insert(words, word)
+        end
+        count = count + #words
+        
+        -- 替换操作
+        local replaced = s:gsub("o", "0")
+        count = count + #replaced
+    end
+    return count
+end
+
+-- 25. 表排序测试
+local function test_table_sort(n)
+    local t = {}
+    for i = 1, n do
+        t[i] = math.random(n)
+    end
+    
+    table.sort(t)
+    return t[1]
+end
+
+-- 26. 可变参数测试
+local function test_varargs(n)
+    local function sum(...)
+        local total = 0
+        for _, v in ipairs{...} do
+            total = total + v
+end
+        return total
+    end
+    
+    local total = 0
+    for i = 1, n do
+        total = total + sum(i, i*2, i*3)
+    end
+    return total
+end
+
+-- 27. 字符串格式化测试
+local function test_string_format(n)
+    local total = 0
+    for i = 1, n do
+        local s = string.format("%d: %.2f, %s", i, math.pi * i, "test")
+        total = total + #s
+    end
+    return total
+end
+
+-- 28. 弱引用表测试
+local function test_weak_tables(n)
+    local weak_table = setmetatable({}, {__mode = "kv"})
+    local count = 0
+    
+    for i = 1, n do
+        weak_table[i] = {value = i}
+        if weak_table[i] then
+            count = count + 1
+        end
+    end
+    
+    -- 触发垃圾回收
+    collectgarbage()
+    
+    -- 统计剩余元素
+    for _ in pairs(weak_table) do
+        count = count - 1
+    end
+    
+    return count
+end
+
+-- 29. 数学库函数测试
+local function test_math_functions(n)
+    local sum = 0
+    for i = 1, n do
+        sum = sum + math.sin(i) + math.cos(i) + math.sqrt(i)
+    end
+    return sum
+end
+
+-- 30. 表哈希部分操作测试
+local function test_table_hash_operations(n)
+    local t = {}
+    local sum = 0
+    
+    -- 插入哈希元素
+    for i = 1, n do
+        t["key_" .. i] = i
+    end
+    
+    -- 访问哈希元素
+    for i = 1, n do
+        sum = sum + t["key_" .. i]
+    end
+    
+    -- 删除哈希元素
+    for i = 1, n do
+        t["key_" .. i] = nil
+    end
+    
+    return sum
+end
+
 -- 测试套件
 local tests = {
     ["arithmetic"] = {test_arithmetic, iterations},
@@ -382,6 +518,14 @@ local tests = {
     ["loadstring"] = {test_loadstring, math.min(iterations, 1000)},
     ["pcall"] = {test_pcall, math.min(iterations, 100000)},
     ["type"] = {test_type, math.min(iterations, 100000)},
+    ["bitwise"] = {test_bitwise_operations, math.min(iterations, 10000)},
+    ["regex"] = {test_regex, math.min(iterations, 10000)},
+    ["tablesort"] = {test_table_sort, math.min(iterations, 10000)},
+    ["varargs"] = {test_varargs, math.min(iterations, 100000)},
+    ["stringfmt"] = {test_string_format, math.min(iterations, 10000)},
+    ["weaktables"] = {test_weak_tables, math.min(iterations, 10000)},
+    ["math"] = {test_math_functions, math.min(iterations, 10000)},
+    ["hash"] = {test_table_hash_operations, math.min(iterations, 100000)},
 }
 
 -- 运行指定测试
