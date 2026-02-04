@@ -19,7 +19,6 @@
 #define LUA_LOAD_LIB_NAME "package"
 #define LUA_DB_LIB_NAME   "debug"
 #define LUA_BIT_LIB_NAME  "bit"
-#define LUA_JIT_LIB_NAME  "jit"
 
 int luaopen_base(lua_State* L);
 int luaopen_math(lua_State* L);
@@ -31,7 +30,6 @@ int luaopen_package(lua_State* L);
 int luaopen_debug(lua_State* L);
 int luaopen_bit(lua_State* L);
 int luaopen_jit(lua_State* L);
-int luaopen_ffi(lua_State* L);
 int luaopen_string_buffer(lua_State* L);
 
 void luaL_openlibs(lua_State* L);
