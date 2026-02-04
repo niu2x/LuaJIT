@@ -1,6 +1,6 @@
 /*
 ** Standard library header.
-** Copyright (C) 2005-2026 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2026 niu2x
 */
 
 #ifndef _LUALIB_H
@@ -20,22 +20,21 @@
 #define LUA_DB_LIB_NAME   "debug"
 #define LUA_BIT_LIB_NAME  "bit"
 #define LUA_JIT_LIB_NAME  "jit"
-#define LUA_FFI_LIB_NAME  "ffi"
 
- int luaopen_base(lua_State* L);
- int luaopen_math(lua_State* L);
- int luaopen_string(lua_State* L);
- int luaopen_table(lua_State* L);
- int luaopen_io(lua_State* L);
- int luaopen_os(lua_State* L);
- int luaopen_package(lua_State* L);
- int luaopen_debug(lua_State* L);
- int luaopen_bit(lua_State* L);
- int luaopen_jit(lua_State* L);
- int luaopen_ffi(lua_State* L);
- int luaopen_string_buffer(lua_State* L);
+int luaopen_base(lua_State* L);
+int luaopen_math(lua_State* L);
+int luaopen_string(lua_State* L);
+int luaopen_table(lua_State* L);
+int luaopen_io(lua_State* L);
+int luaopen_os(lua_State* L);
+int luaopen_package(lua_State* L);
+int luaopen_debug(lua_State* L);
+int luaopen_bit(lua_State* L);
+int luaopen_jit(lua_State* L);
+int luaopen_ffi(lua_State* L);
+int luaopen_string_buffer(lua_State* L);
 
- void luaL_openlibs(lua_State* L);
+void luaL_openlibs(lua_State* L);
 
 #ifndef lua_assert
     #define lua_assert(x) ((void)0)
