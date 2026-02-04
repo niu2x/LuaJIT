@@ -30,7 +30,7 @@
 
 /* Stack sizes. */
 #define LJ_STACK_MIN   LUA_MINSTACK /* Min. stack size. */
-#define LJ_STACK_MAX   LUAI_MAXSTACK /* Max. stack size. */
+#define LJ_STACK_MAX   LUAI_MAX_STACK /* Max. stack size. */
 #define LJ_STACK_START (2 * LJ_STACK_MIN) /* Starting stack size. */
 #define LJ_STACK_MAXEX (LJ_STACK_MAX + 1 + LJ_STACK_EXTRA)
 
@@ -286,8 +286,8 @@ LUA_API lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
     setgcref(g->gc.root, obj2gco(L));
     setmref(g->gc.sweep, &g->gc.root);
     g->gc.total   = sizeof(GG_State);
-    g->gc.pause   = LUAI_GCPAUSE;
-    g->gc.stepmul = LUAI_GCMUL;
+    g->gc.pause   = LUAI_GC_PAUSE;
+    g->gc.stepmul = LUAI_GC_MUL;
     lj_dispatch_init((GG_State*)L);
     L->status = LUA_ERRERR + 1; /* Avoid touching the stack upon memory error. */
     if (lj_vm_cpcall(L, NULL, NULL, cpluaopen) != 0) {

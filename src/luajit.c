@@ -19,6 +19,8 @@
 
 #include "lj_arch.h"
 
+
+
 #if LJ_TARGET_POSIX
     #include <unistd.h>
     #define lua_stdin_is_tty() isatty(0)
@@ -237,9 +239,9 @@ static int incomplete(lua_State* L, int status)
 
 static int pushline(lua_State* L, int firstline)
 {
-    char buf[LUA_MAXINPUT];
+    char buf[LUA_MAX_INPUT];
     write_prompt(L, firstline);
-    if (fgets(buf, LUA_MAXINPUT, stdin)) {
+    if (fgets(buf, LUA_MAX_INPUT, stdin)) {
         size_t len = strlen(buf);
         if (len > 0 && buf[len - 1] == '\n')
             buf[len - 1] = '\0';

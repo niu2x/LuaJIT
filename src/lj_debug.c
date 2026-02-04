@@ -334,13 +334,13 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
 {
     const char* src = strdata(str);
     if (*src == '=') {
-        strncpy(out, src + 1, LUA_IDSIZE); /* Remove first char. */
-        out[LUA_IDSIZE - 1] = '\0'; /* Ensures null termination. */
+        strncpy(out, src + 1, LUA_ID_SIZE); /* Remove first char. */
+        out[LUA_ID_SIZE - 1] = '\0'; /* Ensures null termination. */
     } else if (*src == '@') { /* Output "source", or "...source". */
         size_t len = str->len - 1;
         src++; /* Skip the `@' */
-        if (len >= LUA_IDSIZE) {
-            src += len - (LUA_IDSIZE - 4); /* Get last part of file name. */
+        if (len >= LUA_ID_SIZE) {
+            src += len - (LUA_ID_SIZE - 4); /* Get last part of file name. */
             *out++ = '.';
             *out++ = '.';
             *out++ = '.';
@@ -348,14 +348,14 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
         strcpy(out, src);
     } else { /* Output [string "string"] or [builtin:name]. */
         size_t len; /* Length, up to first control char. */
-        for (len = 0; len < LUA_IDSIZE - 12; len++)
+        for (len = 0; len < LUA_ID_SIZE - 12; len++)
             if (((const unsigned char*)src)[len] < ' ')
                 break;
         strcpy(out, line == ~(BCLine)0 ? "[builtin:" : "[string \"");
         out += 9;
         if (src[len] != '\0') { /* Must truncate? */
-            if (len > LUA_IDSIZE - 15)
-                len = LUA_IDSIZE - 15;
+            if (len > LUA_ID_SIZE - 15)
+                len = LUA_ID_SIZE - 15;
             strncpy(out, src, len);
             out += len;
             strcpy(out, "...");
@@ -377,7 +377,7 @@ void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nex
             BCLine line = debug_frameline(L, fn, nextframe);
             if (line >= 0) {
                 GCproto* pt = funcproto(fn);
-                char     buf[LUA_IDSIZE];
+                char     buf[LUA_ID_SIZE];
                 lj_debug_shortname(buf, proto_chunkname(pt), pt->firstline);
                 lj_strfmt_pushf(L, "%s:%d: %s", buf, line, msg);
                 return;

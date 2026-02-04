@@ -1,14 +1,11 @@
 /*
 ** Configuration header.
-** Copyright (C) 2005-2026 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2026 niu2x
 */
 
 #ifndef luaconf_h
 #define luaconf_h
 
-#ifndef WINVER
-    #define WINVER 0x0501
-#endif
 #include <stddef.h>
 
 /* Default path for loading Lua and C modules with require(). */
@@ -85,42 +82,37 @@
 #define LUA_QS    LUA_QL("%s")
 
 /* Various tunables. */
-#define LUAI_MAXSTACK   65500 /* Max. # of stack slots for a thread (<64K). */
-#define LUAI_MAXCSTACK  8000 /* Max. # of stack slots for a C func (<10K). */
-#define LUAI_GCPAUSE    200 /* Pause GC until memory is at 200%. */
-#define LUAI_GCMUL      200 /* Run GC at 200% of allocation speed. */
-#define LUA_MAXCAPTURES 32 /* Max. pattern captures. */
+#define LUAI_MAX_STACK   65500 /* Max. # of stack slots for a thread (<64K). */
+#define LUAI_MAX_CSTACK  8000 /* Max. # of stack slots for a C func (<10K). */
+#define LUAI_GC_PAUSE    200 /* Pause GC until memory is at 200%. */
+#define LUAI_GC_MUL      200 /* Run GC at 200% of allocation speed. */
+#define LUA_MAX_CAPTURES 32 /* Max. pattern captures. */
 
 /* Configuration for the frontend (the luajit executable). */
 #if defined(luajit_c)
     #define LUA_PROGNAME "luajit" /* Fallback frontend name. */
     #define LUA_PROMPT   "> " /* Interactive prompt. */
     #define LUA_PROMPT2  ">> " /* Continuation prompt. */
-    #define LUA_MAXINPUT 512 /* Max. input line length. */
+    #define LUA_MAX_INPUT 512 /* Max. input line length. */
 #endif
 
 /* Note: changing the following defines breaks the Lua 5.1 ABI. */
 #define LUA_INTEGER ptrdiff_t
-#define LUA_IDSIZE  60 /* Size of lua_Debug.short_src. */
+#define LUA_ID_SIZE 60 /* Size of lua_Debug.short_src. */
 /*
 ** Size of lauxlib and io.* on-stack buffers. Weird workaround to avoid using
 ** unreasonable amounts of stack space, but still retain ABI compatibility.
 ** Blame Lua for depending on BUFSIZ in the ABI, blame **** for wrecking it.
 */
-#define LUAL_BUFFERSIZE (BUFSIZ > 16384 ? 8192 : BUFSIZ)
+#define LUAL_BUFFER_SIZE (BUFSIZ > 16384 ? 8192 : BUFSIZ)
 
 /* The following defines are here only for compatibility with luaconf.h
 ** from the standard Lua distribution. They must not be changed for LuaJIT.
 */
-#define LUA_NUMBER_DOUBLE
 #define LUA_NUMBER           double
-#define LUAI_UACNUMBER       double
 #define LUA_NUMBER_SCAN      "%lf"
 #define LUA_NUMBER_FMT       "%.14g"
 #define lua_number2str(s, n) sprintf((s), LUA_NUMBER_FMT, (n))
-#define LUAI_MAXNUMBER2STR   32
-#define LUA_INTFRMLEN        "l"
-#define LUA_INTFRM_T         long
 
 /* Linkage of public API functions. */
 #if defined(LUA_BUILD_AS_DLL)
@@ -137,13 +129,17 @@
 #endif
 
 /* Compatibility support for assertions. */
-#if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
+#if defined(LUA_USE_ASSERT) || defined(LUA_USE_API_CHECK)
     #include <assert.h>
 #endif
+
 #ifdef LUA_USE_ASSERT
     #define lua_assert(x) assert(x)
+#else
+    #define lua_assert(x) ((void)0)
 #endif
-#ifdef LUA_USE_APICHECK
+
+#ifdef LUA_USE_API_CHECK
     #define luai_apicheck(L, o)                                                                    \
         {                                                                                          \
             (void)L;                                                                               \

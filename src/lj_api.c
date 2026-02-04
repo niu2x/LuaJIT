@@ -97,7 +97,7 @@ LUA_API int lua_status(lua_State* L)
 
 LUA_API int lua_checkstack(lua_State* L, int size)
 {
-    if (size > LUAI_MAXCSTACK || (L->top - L->base + size) > LUAI_MAXCSTACK) {
+    if (size > LUAI_MAX_CSTACK || (L->top - L->base + size) > LUAI_MAX_CSTACK) {
         return 0; /* Stack overflow. */
     } else if (size > 0) {
         int avail = (int)(mref(L->maxstack, TValue) - L->top);

@@ -143,7 +143,7 @@ static int io_file_readnum(lua_State* L, FILE* fp)
 
 static int io_file_readline(lua_State* L, FILE* fp, MSize chop)
 {
-    MSize m = LUAL_BUFFERSIZE, n = 0, ok = 0;
+    MSize m = LUAL_BUFFER_SIZE, n = 0, ok = 0;
     char* buf;
     for (;;) {
         buf = lj_buf_tmp(L, m);
@@ -166,7 +166,7 @@ static int io_file_readline(lua_State* L, FILE* fp, MSize chop)
 static void io_file_readall(lua_State* L, FILE* fp)
 {
     MSize m, n;
-    for (m = LUAL_BUFFERSIZE, n = 0;; m += m) {
+    for (m = LUAL_BUFFER_SIZE, n = 0;; m += m) {
         char* buf = lj_buf_tmp(L, m);
         n += (MSize)fread(buf + n, 1, m - n, fp);
         if (n != m) {
@@ -379,7 +379,7 @@ LJLIB_CF(io_method_setvbuf)
 {
     FILE*  fp  = io_tofile(L)->fp;
     int    opt = lj_lib_checkopt(L, 2, -1, "\4full\4line\2no");
-    size_t sz  = (size_t)lj_lib_optint(L, 3, LUAL_BUFFERSIZE);
+    size_t sz  = (size_t)lj_lib_optint(L, 3, LUAL_BUFFER_SIZE);
     if (opt == 0)
         opt = _IOFBF;
     else if (opt == 1)

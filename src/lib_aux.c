@@ -174,7 +174,7 @@ static int libsize(const luaL_Reg* l)
 /* -- Buffer handling ----------------------------------------------------- */
 
 #define bufflen(B)  ((size_t)((B)->p - (B)->buffer))
-#define bufffree(B) ((size_t)(LUAL_BUFFERSIZE - bufflen(B)))
+#define bufffree(B) ((size_t)(LUAL_BUFFER_SIZE - bufflen(B)))
 
 static int emptybuffer(luaL_Buffer* B)
 {

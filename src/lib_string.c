@@ -59,7 +59,7 @@ LJLIB_REC(string_range 0)
         return FFH_RES(0); /* Empty interval: return no results. */
     start--;
     n = stop - start;
-    if ((uint32_t)n > LUAI_MAXCSTACK)
+    if ((uint32_t)n > LUAI_MAX_CSTACK)
         lj_err_caller(L, LJ_ERR_STRSLC);
     lj_state_checkstack(L, (MSize)n);
     p = (const unsigned char*)strdata(s) + start;
@@ -178,7 +178,7 @@ typedef struct MatchState {
     struct {
         const char* init;
         ptrdiff_t   len;
-    } capture[LUA_MAXCAPTURES];
+    } capture[LUA_MAX_CAPTURES];
 } MatchState;
 
 #define L_ESC '%'
@@ -364,7 +364,7 @@ static const char* start_capture(MatchState* ms, const char* s, const char* p, i
 {
     const char* res;
     int         level = ms->level;
-    if (level >= LUA_MAXCAPTURES)
+    if (level >= LUA_MAX_CAPTURES)
         lj_err_caller(ms->L, LJ_ERR_STRCAPN);
     ms->capture[level].init = s;
     ms->capture[level].len  = what;

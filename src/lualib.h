@@ -34,8 +34,4 @@ int luaopen_string_buffer(lua_State* L);
 
 void luaL_openlibs(lua_State* L);
 
-#ifndef lua_assert
-    #define lua_assert(x) ((void)0)
-#endif
-
 #endif

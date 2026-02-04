@@ -721,7 +721,7 @@ struct lua_State {
 #define curr_topL(L)    (L->base + curr_proto(L)->framesize)
 #define curr_top(L)     (curr_funcisL(L) ? curr_topL(L) : L->top)
 
-#if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
+#if defined(LUA_USE_ASSERT) || defined(LUA_USE_API_CHECK)
 LJ_FUNC_NORET void
 lj_assert_fail(global_State* g, const char* file, int line, const char* func, const char* fmt, ...);
 #endif

@@ -256,7 +256,7 @@ LJLIB_CF(unpack)
         return 0;
     nu = (uint32_t)e-(uint32_t)i;
     n  = (int32_t)(nu + 1);
-    if (nu >= LUAI_MAXCSTACK || !lua_checkstack(L, n))
+    if (nu >= LUAI_MAX_CSTACK || !lua_checkstack(L, n))
         lj_err_caller(L, LJ_ERR_UNPACK);
     do {
         cTValue* tv = lj_tab_getint(t, i);

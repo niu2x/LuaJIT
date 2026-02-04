@@ -19,7 +19,7 @@ typedef struct lj_Debug {
     int         nups;
     int         linedefined;
     int         lastlinedefined;
-    char        short_src[LUA_IDSIZE];
+    char        short_src[LUA_ID_SIZE];
     int         i_ci;
     /* Extended fields. Only valid if lj_debug_getinfo() is called with ext = 1.*/
     int nparams;

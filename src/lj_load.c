@@ -84,7 +84,7 @@ LUA_API int lua_load(lua_State* L, lua_Reader reader, void* data, const char* ch
 
 typedef struct FileReaderCtx {
     FILE* fp;
-    char  buf[LUAL_BUFFERSIZE];
+    char  buf[LUAL_BUFFER_SIZE];
 } FileReaderCtx;
 
 static const char* reader_file(lua_State* L, void* ud, size_t* size)

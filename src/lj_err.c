@@ -772,7 +772,7 @@ LJ_NOINLINE void lj_err_msg(lua_State* L, ErrMsg em)
 LJ_NOINLINE void
 lj_err_lex(lua_State* L, GCstr* src, const char* tok, BCLine line, ErrMsg em, va_list argp)
 {
-    char        buff[LUA_IDSIZE];
+    char        buff[LUA_ID_SIZE];
     const char* msg;
     lj_debug_shortname(buff, src, line);
     msg = lj_strfmt_pushvf(L, err2msg(em), argp);
