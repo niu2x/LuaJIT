@@ -203,7 +203,7 @@ static int io_file_read(lua_State* L, IOFileUD* iof, int start)
         n  = start + 1; /* Return 1 result. */
     } else {
         /* The results plus the buffers go on top of the args. */
-        luaL_checkstack(L, nargs + LUA_MINSTACK, "too many arguments");
+        luaL_checkstack(L, nargs + LUA_MIN_STACK, "too many arguments");
         ok = 1;
         for (n = start; nargs-- && ok; n++) {
             if (tvisstr(L->base + n)) {

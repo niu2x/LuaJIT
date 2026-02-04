@@ -537,7 +537,7 @@ static void build_subroutines(BuildCtx *ctx)
   |//-----------------------------------------------------------------------
   |
   |->vm_growstack_c:			// Grow stack for C function.
-  |  mov CARG2d, LUA_MINSTACK
+  |  mov CARG2d, LUA_MIN_STACK
   |  jmp >2
   |
   |->vm_growstack_v:			// Grow stack for vararg Lua function.
@@ -2131,7 +2131,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov SAVE_PC, PC			// Redundant (but a defined value).
   |  mov L:RB->base, BASE
   |  lea RD, [BASE+NARGS:RD*8-8]
-  |  lea RA, [RD+8*LUA_MINSTACK]	// Ensure enough space for handler.
+  |  lea RA, [RD+8*LUA_MIN_STACK]	// Ensure enough space for handler.
   |  mov L:RB->top, RD
   |  mov CFUNC:RD, [BASE-16]
   |  cleartp CFUNC:RD
@@ -2169,7 +2169,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  jmp ->vm_call_dispatch		// Resolve again for tailcall.
   |
   |5:  // Grow stack for fallback handler.
-  |  mov CARG2d, LUA_MINSTACK
+  |  mov CARG2d, LUA_MIN_STACK
   |  mov CARG1, L:RB
   |  call extern lj_state_growstack	// (lua_State *L, int n)
   |  mov BASE, L:RB->base
@@ -4609,7 +4609,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov L:RB, SAVE_L
     |  lea RD, [BASE+NARGS:RD*8-8]
     |  mov L:RB->base, BASE
-    |  lea RA, [RD+8*LUA_MINSTACK]
+    |  lea RA, [RD+8*LUA_MIN_STACK]
     |  cmp RA, L:RB->maxstack
     |  mov L:RB->top, RD
     if (op == BC_FUNCC) {

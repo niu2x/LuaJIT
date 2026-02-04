@@ -390,7 +390,7 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |->vm_growstack_c:			// Grow stack for C function.
   |  // CARG1 = L
-  |  mov CARG2, #LUA_MINSTACK
+  |  mov CARG2, #LUA_MIN_STACK
   |  b >2
   |
   |->vm_growstack_l:			// Grow stack for Lua function.
@@ -1927,7 +1927,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  str CARG1, L->top
   |   ldr CARG3, CFUNC:CARG3->f
   |    str BASE, L->base
-  |  add CARG1, CARG1, #8*LUA_MINSTACK
+  |  add CARG1, CARG1, #8*LUA_MIN_STACK
   |    str PC, SAVE_PC			// Redundant (but a defined value).
   |  cmp CARG1, CARG2
   |   mov CARG1, L
@@ -1957,7 +1957,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  b ->vm_call_dispatch		// Resolve again for tailcall.
   |
   |5:  // Grow stack for fallback handler.
-  |  mov CARG2, #LUA_MINSTACK
+  |  mov CARG2, #LUA_MIN_STACK
   |  bl extern lj_state_growstack	// (lua_State *L, int n)
   |  ldr BASE, L->base
   |  cmp CARG1, CARG1			// Set zero-flag to force retry.

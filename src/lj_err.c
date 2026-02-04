@@ -720,7 +720,7 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_run(lua_State* L)
     ptrdiff_t ef = finderrfunc(L);
     if (ef) {
         TValue *errfunc, *top;
-        lj_state_checkstack(L, LUA_MINSTACK * 2); /* Might raise new error. */
+        lj_state_checkstack(L, LUA_MIN_STACK * 2); /* Might raise new error. */
         errfunc = restorestack(L, ef);
         top     = L->top;
         if (!tvisfunc(errfunc) || L->status == LUA_ERRERR) {

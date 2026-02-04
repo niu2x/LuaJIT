@@ -29,7 +29,7 @@
 /* -- Stack handling ------------------------------------------------------ */
 
 /* Stack sizes. */
-#define LJ_STACK_MIN   LUA_MINSTACK /* Min. stack size. */
+#define LJ_STACK_MIN   LUA_MIN_STACK /* Min. stack size. */
 #define LJ_STACK_MAX   LUAI_MAX_STACK /* Max. stack size. */
 #define LJ_STACK_START (2 * LJ_STACK_MIN) /* Starting stack size. */
 #define LJ_STACK_MAXEX (LJ_STACK_MAX + 1 + LJ_STACK_EXTRA)
@@ -122,10 +122,10 @@ void LJ_FASTCALL lj_state_growstack(lua_State* L, MSize need)
             ** will need some stack space to run in. We give it a stack size beyond
             ** the normal limit in order to do so, then rely on lj_state_relimitstack
             ** calls during unwinding to bring us back to a convential stack size.
-            ** The + 1 is space for the error message, and 2 * LUA_MINSTACK is for
+            ** The + 1 is space for the error message, and 2 * LUA_MIN_STACK is for
             ** the lj_state_checkstack() call in lj_err_run().
             */
-            resizestack(L, LJ_STACK_MAX + 1 + 2 * LUA_MINSTACK);
+            resizestack(L, LJ_STACK_MAX + 1 + 2 * LUA_MIN_STACK);
             lj_err_stkov(L); /* May invoke an error handler. */
         } else {
             /* If we're here, then the stack overflow error handler is requesting

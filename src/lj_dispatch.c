@@ -45,7 +45,7 @@ void lj_dispatch_init(GG_State* GG)
     disp[BC_LOOP]      = disp[BC_ILOOP];
     disp[BC_FUNCF]     = disp[BC_IFUNCF];
     disp[BC_FUNCV]     = disp[BC_IFUNCV];
-    GG->g.bc_cfunc_ext = GG->g.bc_cfunc_int = BCINS_AD(BC_FUNCC, LUA_MINSTACK, 0);
+    GG->g.bc_cfunc_ext = GG->g.bc_cfunc_int = BCINS_AD(BC_FUNCC, LUA_MIN_STACK, 0);
     for (i = 0; i < GG_NUM_ASMFF; i++)
         GG->bcff[i] = BCINS_AD(BC__MAX + i, 0, 0);
 }
@@ -242,7 +242,7 @@ static void callhook(lua_State* L, int event, BCLine line)
         ar.currentline = line;
         /* Top frame, nextframe = NULL. */
         ar.i_ci = (int)((L->base - 1) - tvref(L->stack));
-        lj_state_checkstack(L, 1 + LUA_MINSTACK);
+        lj_state_checkstack(L, 1 + LUA_MIN_STACK);
         hook_enter(g);
         hookf(L, &ar);
         lj_assertG(hook_active(g), "active hook flag removed");
@@ -318,7 +318,7 @@ static int call_init(lua_State* L, GCfunc* fn)
         numparams -= gotparams;
         return numparams >= 0 ? numparams : 0;
     } else {
-        lj_state_checkstack(L, LUA_MINSTACK);
+        lj_state_checkstack(L, LUA_MIN_STACK);
         return 0;
     }
 }

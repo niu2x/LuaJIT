@@ -195,7 +195,7 @@ static void adjuststack(luaL_Buffer* B)
         size_t     toplen = lua_strlen(L, -1);
         do {
             size_t l = lua_strlen(L, -(toget + 1));
-            if (!(B->lvl - toget + 1 >= LUA_MINSTACK / 2 || toplen > l))
+            if (!(B->lvl - toget + 1 >= LUA_MIN_STACK / 2 || toplen > l))
                 break;
             toplen += l;
             toget++;
