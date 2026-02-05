@@ -1,7 +1,8 @@
 default:
-	$(MAKE) -C src
+	cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+	cmake --build build -j
 
 benchmark:
-	src/luajit benchmark.lua
+	./build/luajit benchmark.lua
 
 .PHONY: default
