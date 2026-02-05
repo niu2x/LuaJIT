@@ -4738,30 +4738,7 @@ static void emit_asm_debug(BuildCtx *ctx)
 	".LEFDE2:\n\n", fcofs, CFRAME_SIZE);
 
 #endif
-#if LJ_TARGET_LINUX && (LJ_ABI_BRANCH_TRACK || LJ_ABI_SHADOW_STACK)
-    fprintf(ctx->fp,
-	"\t.section .note.gnu.property,\"a\"\n"
-	"\t.align 8\n"
-	"\t.long 4\n"
-	"\t.long 16\n"
-	"\t.long 5\n"
-	"\t.long 0x00554e47\n"
-	"\t.long 0xc0000002\n"
-	"\t.long 4\n"
-	"\t.long %d\n"
-	"\t.long 0\n",
-#if LJ_ABI_BRANCH_TRACK
-	1|
-#else
-	0|
-#endif
-#if LJ_ABI_SHADOW_STACK
-	2
-#else
-	0
-#endif
-	);
-#endif
+
     break;
 #if !LJ_NO_UNWIND
   /* Mental note: never let Apple design an assembler.

@@ -4032,19 +4032,7 @@ static void emit_asm_debug(BuildCtx *ctx)
 	".LEFDE2:\n\n");
 
 #endif
-#if LJ_TARGET_LINUX && LJ_ABI_BRANCH_TRACK
-    fprintf(ctx->fp,
-	"\t.section .note.gnu.property,\"a\"\n"
-	"\t.align 3\n"
-	"\t.long 4\n"
-	"\t.long 16\n"
-	"\t.long 5\n"
-	"\t.long 0x00554e47\n"
-	"\t.long 0xc0000000\n"
-	"\t.long 4\n"
-	"\t.long 1\n"
-	"\t.long 0\n");
-#endif
+
     break;
 #if !LJ_NO_UNWIND
   case BUILD_machasm: {
