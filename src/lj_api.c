@@ -101,8 +101,9 @@ int lua_checkstack(lua_State* L, int size)
 
  void luaL_checkstack(lua_State* L, int size, const char* msg)
 {
-    if (!lua_checkstack(L, size))
+    if (!lua_checkstack(L, size)) {
         lj_err_callerv(L, LJ_ERR_STKOVM, msg);
+    }
 }
 
 void lua_xmove(lua_State* L, lua_State* to, int n)
