@@ -66,7 +66,6 @@ static TValue* index2adr_stack(lua_State* L, int idx)
             lj_checkapi(0, "invalid stack slot %d", idx);
             return niltv(L);
         }
-        return o < L->top ? o : niltv(L);
     } else {
         lj_checkapi(idx != 0 && -idx <= L->top - L->base, "invalid stack slot %d", idx);
         return L->top + idx;
@@ -88,7 +87,7 @@ int lua_status(lua_State* L)
 
 int lua_checkstack(lua_State* L, int size)
 {
-    if (size > LUAI_MAX_CSTACK || (L->top - L->base + size) > LUAI_MAX_CSTACK) {
+    if (size > LUAI_MAX_C_STACK || (L->top - L->base + size) > LUAI_MAX_C_STACK) {
         return 0; /* Stack overflow. */
     } else if (size > 0) {
         int avail = (int)(mref(L->maxstack, TValue) - L->top);

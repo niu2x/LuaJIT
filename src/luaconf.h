@@ -83,7 +83,7 @@
 
 /* Various tunables. */
 #define LUAI_MAX_STACK   65500 /* Max. # of stack slots for a thread (<64K). */
-#define LUAI_MAX_CSTACK  8000 /* Max. # of stack slots for a C func (<10K). */
+#define LUAI_MAX_C_STACK 8000 /* Max. # of stack slots for a C func (<10K). */
 #define LUAI_GC_PAUSE    200 /* Pause GC until memory is at 200%. */
 #define LUAI_GC_MUL      200 /* Run GC at 200% of allocation speed. */
 #define LUA_MAX_CAPTURES 32 /* Max. pattern captures. */

@@ -59,7 +59,7 @@ LJLIB_REC(string_range 0)
         return FFH_RES(0); /* Empty interval: return no results. */
     start--;
     n = stop - start;
-    if ((uint32_t)n > LUAI_MAX_CSTACK)
+    if ((uint32_t)n > LUAI_MAX_C_STACK)
         lj_err_caller(L, LJ_ERR_STRSLC);
     lj_state_checkstack(L, (MSize)n);
     p = (const unsigned char*)strdata(s) + start;
