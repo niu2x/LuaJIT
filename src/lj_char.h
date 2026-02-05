@@ -37,6 +37,6 @@
 #define lj_char_toupper(c) ((c) - (lj_char_islower(c) >> 1))
 #define lj_char_tolower(c) ((c) + lj_char_isupper(c))
 
-LJ_DATA const uint8_t lj_char_bits[257];
+extern const uint8_t lj_char_bits[257];
 
 #endif
