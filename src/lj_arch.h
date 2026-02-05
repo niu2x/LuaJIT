@@ -476,6 +476,8 @@ extern void* LJ_WIN_LOADLIBA(const char* path);
     #define LJ_NO_UNWIND 1
 #endif
 
+
+
 #if !LJ_NO_UNWIND && !defined(LUAJIT_UNWIND_INTERNAL)                                              \
     && (LJ_ABI_WIN                                                                                 \
         || (defined(LUAJIT_UNWIND_EXTERNAL) && (defined(__GNUC__) || defined(__clang__))))
