@@ -937,10 +937,13 @@ static LJ_AINLINE void setgcV(lua_State* L, TValue* o, GCobj* v, uint32_t it)
     {                                                                                              \
         setgcV(L, o, obj2gco(v), tag);                                                             \
     }
-define_setV(setstrV, GCstr, LJ_TSTR) define_setV(setthreadV, lua_State, LJ_TTHREAD)
-    define_setV(setprotoV, GCproto, LJ_TPROTO) define_setV(setfuncV, GCfunc, LJ_TFUNC)
-        define_setV(setcdataV, GCcdata, LJ_TCDATA) define_setV(settabV, GCtab, LJ_TTAB)
-            define_setV(setudataV, GCudata, LJ_TUDATA)
+define_setV(setstrV, GCstr, LJ_TSTR) 
+define_setV(setthreadV, lua_State, LJ_TTHREAD)
+define_setV(setprotoV, GCproto, LJ_TPROTO) 
+define_setV(setfuncV, GCfunc, LJ_TFUNC)
+define_setV(setcdataV, GCcdata, LJ_TCDATA) 
+define_setV(settabV, GCtab, LJ_TTAB)
+define_setV(setudataV, GCudata, LJ_TUDATA)
 
 #define setnumV(o, x) ((o)->n = (x))
 #define setnanV(o)    ((o)->u64 = U64x(fff80000, 00000000))
