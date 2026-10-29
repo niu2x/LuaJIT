@@ -71,7 +71,7 @@ WRAPPER
     make -C "$source" -j"$JOBS" "${args[@]}"
     mkdir -p "$OUT/$abi/include"
     cp "$source/src/libluajit.a" "$OUT/$abi/libluajit.a"
-    cp "$source"/src/*.h "$OUT/$abi/include/"
+    cp "$source"/src/*.h "$source/src/lua.hpp" "$OUT/$abi/include/"
     "$TOOLCHAIN/bin/llvm-readelf" -h "$source/src/lj_state.o" | sed -n '/Class:/p; /Machine:/p'
     echo "Built: $OUT/$abi/libluajit.a"
     if [[ -n "$INSTALL_ROOT" ]]; then
@@ -87,8 +87,16 @@ else
     HEADER_ABI=$ABI
 fi
 if [[ -n "$INSTALL_ROOT" ]]; then
-    for directory in engine/he.core/lua_support/luajit/Headers engine/cocos2dx/cocos2dx/base/luajit_header engine/cocos2dx/scripting/lua/lua engine/he.core/lua_support/luajit/android/include; do
-        cp "$OUT/$HEADER_ABI/include/"*.h "$INSTALL_ROOT/$directory/"
+    # Engine GC statistics use internal definitions from this directory.
+    cp "$OUT/$HEADER_ABI/include/"*.h "$INSTALL_ROOT/engine/cocos2dx/cocos2dx/base/luajit_header/"
+    # The other include directories only need the public embedding API.
+    for directory in engine/he.core/lua_support/luajit/Headers engine/cocos2dx/scripting/lua/lua engine/he.core/lua_support/luajit/android/include; do
+        for header in lua.h lauxlib.h lualib.h luaconf.h; do
+            cp "$OUT/$HEADER_ABI/include/$header" "$INSTALL_ROOT/$directory/"
+        done
+        if [[ "$directory" != engine/cocos2dx/scripting/lua/lua ]]; then
+            cp "$OUT/$HEADER_ABI/include/luajit.h" "$OUT/$HEADER_ABI/include/lua.hpp" "$INSTALL_ROOT/$directory/"
+        fi
     done
     echo "Installed into: $INSTALL_ROOT"
 fi
