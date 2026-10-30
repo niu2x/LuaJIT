@@ -1,6 +1,6 @@
 /*
 ** Garbage collector.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2020 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #ifndef _LJ_GC_H
@@ -82,8 +82,10 @@ LJ_FUNC void lj_gc_barriertrace(global_State *g, uint32_t traceno);
 static LJ_AINLINE void lj_gc_barrierback(global_State *g, GCtab *t)
 {
   GCobj *o = obj2gco(t);
-  lua_assert(isblack(o) && !isdead(g, o));
-  lua_assert(g->gc.state != GCSfinalize && g->gc.state != GCSpause);
+  lj_assertG(isblack(o) && !isdead(g, o),
+	     "bad object states for backward barrier");
+  lj_assertG(g->gc.state != GCSfinalize && g->gc.state != GCSpause,
+	     "bad GC state");
   black2gray(o);
   setgcrefr(t->gclist, g->gc.grayagain);
   setgcref(g->gc.grayagain, o);
@@ -124,7 +126,7 @@ static LJ_AINLINE void lj_mem_free(global_State *g, void *p, size_t osize, const
 
 #define lj_mem_newvec(L, n, t, reason)	((t *)lj_mem_new(L, (GCSize)((n)*sizeof(t)), reason))
 #define lj_mem_reallocvec(L, p, on, n, t) \
-  ((p) = (t *)lj_mem_realloc(L, p, (on)*sizeof(t), (GCSize)((n)*sizeof(t))))
+  ((p) = (t *)lj_mem_realloc(L, p, (on)*sizeof(t), (GCSize)((n)*sizeof(t)), "reallocvec"))
 #define lj_mem_growvec(L, p, n, m, t, reason) \
   ((p) = (t *)lj_mem_grow(L, (p), &(n), (m), (MSize)sizeof(t), reason))
 #define lj_mem_freevec(g, p, n, t, reason)	lj_mem_free(g, (p), (n)*sizeof(t), reason)

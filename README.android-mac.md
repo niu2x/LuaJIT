@@ -40,3 +40,24 @@ cd /Users/happy/project/LuaJIT
 适配还修复了真实大堆诊断触发的递归排序栈溢出（改为非递归堆排序），以及长 chunk 名称使分配标签的 4 KiB 缓冲越界（改为 snprintf）。
 `findf` 会检查对象类型，并正确返回零个 Lua 值；字节码 writer 保持公共四参数回调签名。
 `diff` 增加基线、当前及新增对象数量摘要，计数含义仍是对象数，不是字节数。
+
+## 与正常分支合并
+
+`debug/alloc2` 已合并 `xxl/animal-v2.1.x`（`f7024628`），基于该分支的
+LuaJIT 2.1.0-beta3，同时保留 alloc2 的分配追踪、dump/diff/findf/ignore
+和输出重定向。完整 64 位 lightuserdata 通过上游的高位分段映射实现，
+不再依赖旧 alloc2 的低 47 位地址限制。为项目旧 LuaSocket 等调用保留
+`luaL_reg` 和旧引用宏的兼容头文件接口。
+alloc2 扩展头在 32 位增加对齐填充，GCtab / GCcdata 使用静态断言保证
+8 字节对齐，避免内嵌数组和 FFI 变长对象的对齐/容量假设被破坏。
+
+本机原生回归程序 `tests/alloc2_smoke.c` 应链接本次源码构建的静态库：
+
+```sh
+clang -arch x86_64 -I<build>/src tests/alloc2_smoke.c <build>/src/libluajit.a \
+  -lm -o /tmp/alloc2-smoke
+/tmp/alloc2-smoke /tmp/alloc2-smoke.dump
+```
+
+测试覆盖高位 lightuserdata 的 C API、表键和闭包往返，以及 alloc2 命令、
+长 loadstring、字节码、FFI、协程、JIT 和 5 万对象 diff。

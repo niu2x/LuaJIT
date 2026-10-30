@@ -1,6 +1,6 @@
 /*
 ** String formatting.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2020 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #ifndef _LJ_STRFMT_H
@@ -79,7 +79,8 @@ static LJ_AINLINE void lj_strfmt_init(FormatState *fs, const char *p, MSize len)
 {
   fs->p = (const uint8_t *)p;
   fs->e = (const uint8_t *)p + len;
-  lua_assert(*fs->e == 0);  /* Must be NUL-terminated (may have NULs inside). */
+  /* Must be NUL-terminated. May have NULs inside, too. */
+  lj_assertX(*fs->e == 0, "format not NUL-terminated");
 }
 
 /* Raw conversions. */

@@ -1,6 +1,6 @@
 /*
 ** LuaJIT VM tags, values and objects.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2020 Mike Pall. See Copyright Notice in luajit.h
 **
 ** Portions taken verbatim or adapted from the Lua interpreter.
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
@@ -74,6 +74,13 @@ typedef struct List {
   
 union GCobj;
 
+/* Keep alloc2 header growth a multiple of eight on both pointer widths. */
+#if LJ_64
+#define GCDEBUG_PAD
+#else
+#define GCDEBUG_PAD uint32_t debug_padding;
+#endif
+
 /* Common GC header for all collectable objects. */
 #define GCHeader	GCRef nextgc; uint8_t marked; \
 uint8_t debug_flags; \
@@ -82,6 +89,7 @@ union GCobj *debug_path; \
 char *debug_path_desc; \
 union GCobj *debug_path_param; \
 int debug_counter; \
+GCDEBUG_PAD \
 uint8_t gct
 /* This occupies 6 bytes, so use the next 2 bytes for non-32 bit fields. */
 
@@ -258,7 +266,7 @@ typedef const TValue cTValue;
 **                  ---MSW---.---LSW---
 ** primitive types |  itype  |         |
 ** lightuserdata   |  itype  |  void * |  (32 bit platforms)
-** lightuserdata   |ffff|    void *    |  (64 bit platforms, 47 bit pointers)
+** lightuserdata   |ffff|seg|    ofs   |  (64 bit platforms)
 ** GC objects      |  itype  |  GCRef  |
 ** int (LJ_DUALNUM)|  itype  |   int   |
 ** number           -------double------
@@ -271,7 +279,8 @@ typedef const TValue cTValue;
 **
 **                     ------MSW------.------LSW------
 ** primitive types    |1..1|itype|1..................1|
-** GC objects/lightud |1..1|itype|-------GCRef--------|
+** GC objects         |1..1|itype|-------GCRef--------|
+** lightuserdata      |1..1|itype|seg|------ofs-------|
 ** int (LJ_DUALNUM)   |1..1|itype|0..0|-----int-------|
 ** number              ------------double-------------
 **
@@ -309,6 +318,12 @@ typedef const TValue cTValue;
 
 #if LJ_GC64
 #define LJ_GCVMASK		(((uint64_t)1 << 47) - 1)
+#endif
+
+#if LJ_64
+/* To stay within 47 bits, lightuserdata is segmented. */
+#define LJ_LIGHTUD_BITS_SEG	8
+#define LJ_LIGHTUD_BITS_LO	(47 - LJ_LIGHTUD_BITS_SEG)
 #endif
 
 /* -- String object ------------------------------------------------------- */
@@ -359,6 +374,7 @@ typedef struct GCcdata {
   GCHeader;
   uint16_t ctypeid;	/* C type ID. */
 } GCcdata;
+LJ_STATIC_ASSERT((sizeof(GCcdata) & 7) == 0);
 
 /* Prepended to variable-sized or realigned C data objects. */
 typedef struct GCcdataVar {
@@ -521,6 +537,7 @@ typedef struct GCtab {
   MRef freetop;		/* Top of free elements. */
 #endif
 } GCtab;
+LJ_STATIC_ASSERT((sizeof(GCtab) & 7) == 0);
 
 #define sizetabcolo(n)	((n)*sizeof(TValue) + sizeof(GCtab))
 #define tabref(r)	(&gcref((r))->tab)
@@ -604,7 +621,11 @@ typedef struct GCState {
   uint8_t currentwhite;	/* Current white color. */
   uint8_t state;	/* GC state. */
   uint8_t nocdatafin;	/* No cdata finalizer called. */
-  uint8_t unused2;
+#if LJ_64
+  uint8_t lightudnum;	/* Number of lightuserdata segments - 1. */
+#else
+  uint8_t unused1;
+#endif
   MSize sweepstr;	/* Sweep position in string table. */
   GCRef root;		/* List of all collectable objects. */
   MRef sweep;		/* Sweep position in root list. */
@@ -616,6 +637,9 @@ typedef struct GCState {
   GCSize estimate;	/* Estimate of memory actually in use. */
   MSize stepmul;	/* Incremental GC step granularity. */
   MSize pause;		/* Pause between successive GC cycles. */
+#if LJ_64
+  MRef lightudseg;	/* Upper bits of lightuserdata segments. */
+#endif
 } GCState;
 
 /* Global state, shared by all threads of a Lua universe. */
@@ -666,7 +690,8 @@ typedef struct global_State {
 #define HOOK_PROFILE		0x80
 #define hook_active(g)		((g)->hookmask & HOOK_ACTIVE)
 #define hook_enter(g)		((g)->hookmask |= HOOK_ACTIVE)
-#define hook_entergc(g)		((g)->hookmask |= (HOOK_ACTIVE|HOOK_GC))
+#define hook_entergc(g) \
+  ((g)->hookmask = ((g)->hookmask | (HOOK_ACTIVE|HOOK_GC)) & ~HOOK_PROFILE)
 #define hook_vmevent(g)		((g)->hookmask |= (HOOK_ACTIVE|HOOK_VMEVENT))
 #define hook_leave(g)		((g)->hookmask &= ~HOOK_ACTIVE)
 #define hook_save(g)		((g)->hookmask & ~HOOK_EVENTMASK)
@@ -705,6 +730,11 @@ struct lua_State {
 #define curr_proto(L)		(funcproto(curr_func(L)))
 #define curr_topL(L)		(L->base + curr_proto(L)->framesize)
 #define curr_top(L)		(curr_funcisL(L) ? curr_topL(L) : L->top)
+
+#if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
+LJ_FUNC_NORET void lj_assert_fail(global_State *g, const char *file, int line,
+				  const char *func, const char *fmt, ...);
+#endif
 
 /* -- GC object definition and conversions -------------------------------- */
 
@@ -758,10 +788,6 @@ typedef union GCobj {
 #define obj2gco(v)	((GCobj *)(v))
 
 /* -- TValue getters/setters ---------------------------------------------- */
-
-#ifdef LUA_USE_ASSERT
-#include "lj_gc.h"
-#endif
 
 /* Macros to test types. */
 #if LJ_GC64
@@ -823,10 +849,23 @@ typedef union GCobj {
 #endif
 #define boolV(o)	check_exp(tvisbool(o), (LJ_TFALSE - itype(o)))
 #if LJ_64
-#define lightudV(o) \
-  check_exp(tvislightud(o), (void *)((o)->u64 & U64x(00007fff,ffffffff)))
+#define lightudseg(u) \
+  (((u) >> LJ_LIGHTUD_BITS_LO) & ((1 << LJ_LIGHTUD_BITS_SEG)-1))
+#define lightudlo(u) \
+  ((u) & (((uint64_t)1 << LJ_LIGHTUD_BITS_LO) - 1))
+#define lightudup(p) \
+  ((uint32_t)(((p) >> LJ_LIGHTUD_BITS_LO) << (LJ_LIGHTUD_BITS_LO-32)))
+static LJ_AINLINE void *lightudV(global_State *g, cTValue *o)
+{
+  uint64_t u = o->u64;
+  uint64_t seg = lightudseg(u);
+  uint32_t *segmap = mref(g->gc.lightudseg, uint32_t);
+  lj_assertG(tvislightud(o), "lightuserdata expected");
+  lj_assertG(seg <= g->gc.lightudnum, "bad lightuserdata segment %d", seg);
+  return (void *)(((uint64_t)segmap[seg] << 32) | lightudlo(u));
+}
 #else
-#define lightudV(o)	check_exp(tvislightud(o), gcrefp((o)->gcr, void))
+#define lightudV(g, o)	check_exp(tvislightud(o), gcrefp((o)->gcr, void))
 #endif
 #define gcV(o)		check_exp(tvisgcv(o), gcval(o))
 #define strV(o)		check_exp(tvisstr(o), &gcval(o)->str)
@@ -852,7 +891,7 @@ typedef union GCobj {
 #define setpriV(o, i)		(setitype((o), (i)))
 #endif
 
-static LJ_AINLINE void setlightudV(TValue *o, void *p)
+static LJ_AINLINE void setrawlightudV(TValue *o, void *p)
 {
 #if LJ_GC64
   o->u64 = (uint64_t)p | (((uint64_t)LJ_TLIGHTUD) << 47);
@@ -863,25 +902,29 @@ static LJ_AINLINE void setlightudV(TValue *o, void *p)
 #endif
 }
 
-#if LJ_64
-#define checklightudptr(L, p) \
-  (((uint64_t)(p) >> 47) ? (lj_err_msg(L, LJ_ERR_BADLU), NULL) : (p))
+#if LJ_FR2 || LJ_32
+#define contptr(f)		((void *)(f))
+#define setcont(o, f)		((o)->u64 = (uint64_t)(uintptr_t)contptr(f))
 #else
-#define checklightudptr(L, p)	(p)
-#endif
-
-#if LJ_FR2
-#define setcont(o, f)		((o)->u64 = (uint64_t)(uintptr_t)(void *)(f))
-#elif LJ_64
+#define contptr(f) \
+  ((void *)(uintptr_t)(uint32_t)((intptr_t)(f) - (intptr_t)lj_vm_asm_begin))
 #define setcont(o, f) \
   ((o)->u64 = (uint64_t)(void *)(f) - (uint64_t)lj_vm_asm_begin)
-#else
-#define setcont(o, f)		setlightudV((o), (void *)(f))
 #endif
 
-#define tvchecklive(L, o) \
-  UNUSED(L), lua_assert(!tvisgcv(o) || \
-  ((~itype(o) == gcval(o)->gch.gct) && !isdead(G(L), gcval(o))))
+static LJ_AINLINE void checklivetv(lua_State *L, TValue *o, const char *msg)
+{
+  UNUSED(L); UNUSED(o); UNUSED(msg);
+#if LUA_USE_ASSERT
+  if (tvisgcv(o)) {
+    lj_assertL(~itype(o) == gcval(o)->gch.gct,
+	       "mismatch of TValue type %d vs GC type %d",
+	       ~itype(o), gcval(o)->gch.gct);
+    /* Copy of isdead check from lj_gc.h to avoid circular include. */
+    lj_assertL(!(gcval(o)->gch.marked & (G(L)->gc.currentwhite ^ 3) & 3), msg);
+  }
+#endif
+}
 
 static LJ_AINLINE void setgcVraw(TValue *o, GCobj *v, uint32_t itype)
 {
@@ -894,7 +937,8 @@ static LJ_AINLINE void setgcVraw(TValue *o, GCobj *v, uint32_t itype)
 
 static LJ_AINLINE void setgcV(lua_State *L, TValue *o, GCobj *v, uint32_t it)
 {
-  setgcVraw(o, v, it); tvchecklive(L, o);
+  setgcVraw(o, v, it);
+  checklivetv(L, o, "store to dead GC object");
 }
 
 #define define_setV(name, type, tag) \
@@ -941,13 +985,17 @@ static LJ_AINLINE void setint64V(TValue *o, int64_t i)
 /* Copy tagged values. */
 static LJ_AINLINE void copyTV(lua_State *L, TValue *o1, const TValue *o2)
 {
-  *o1 = *o2; tvchecklive(L, o1);
+  *o1 = *o2;
+  checklivetv(L, o1, "copy of dead GC object");
 }
 
 /* -- Number to integer conversion ---------------------------------------- */
 
 #if LJ_SOFTFP
 LJ_ASMF int32_t lj_vm_tobit(double x);
+#if LJ_TARGET_MIPS64
+LJ_ASMF int32_t lj_vm_tointg(double x);
+#endif
 #endif
 
 static LJ_AINLINE int32_t lj_num2bit(lua_Number n)
@@ -963,14 +1011,22 @@ static LJ_AINLINE int32_t lj_num2bit(lua_Number n)
 
 #define lj_num2int(n)   ((int32_t)(n))
 
+/*
+** This must match the JIT backend behavior. In particular for archs
+** that don't have a common hardware instruction for this conversion.
+** Note that signed FP to unsigned int conversions have an undefined
+** result and should never be relied upon in portable FFI code.
+** See also: C99 or C11 standard, 6.3.1.4, footnote of (1).
+*/
 static LJ_AINLINE uint64_t lj_num2u64(lua_Number n)
 {
-#ifdef _MSC_VER
-  if (n >= 9223372036854775808.0)  /* They think it's a feature. */
-    return (uint64_t)(int64_t)(n - 18446744073709551616.0);
-  else
+#if LJ_TARGET_X86ORX64 || LJ_TARGET_MIPS
+  int64_t i = (int64_t)n;
+  if (i < 0) i = (int64_t)(n - 18446744073709551616.0);
+  return (uint64_t)i;
+#else
+  return (uint64_t)n;
 #endif
-    return (uint64_t)n;
 }
 
 static LJ_AINLINE int32_t numberVint(cTValue *o)
@@ -999,6 +1055,6 @@ LJ_DATA const char *const lj_obj_itypename[~LJ_TNUMX+1];
 
 /* Compare two objects without calling metamethods. */
 LJ_FUNC int LJ_FASTCALL lj_obj_equal(cTValue *o1, cTValue *o2);
-LJ_FUNC const void * LJ_FASTCALL lj_obj_ptr(cTValue *o);
+LJ_FUNC const void * LJ_FASTCALL lj_obj_ptr(global_State *g, cTValue *o);
 
 #endif

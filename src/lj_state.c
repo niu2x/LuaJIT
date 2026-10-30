@@ -1,6 +1,6 @@
 /*
 ** State and stack handling.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2020 Mike Pall. See Copyright Notice in luajit.h
 **
 ** Portions taken verbatim or adapted from the Lua interpreter.
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
@@ -62,7 +62,8 @@ static void resizestack(lua_State *L, MSize n)
   MSize oldsize = L->stacksize;
   MSize realsize = n + 1 + LJ_STACK_EXTRA;
   GCobj *up;
-  lua_assert((MSize)(tvref(L->maxstack)-oldst)==L->stacksize-LJ_STACK_EXTRA-1);
+  lj_assertL((MSize)(tvref(L->maxstack)-oldst) == L->stacksize-LJ_STACK_EXTRA-1,
+	     "inconsistent stack size");
   st = (TValue *)lj_mem_realloc(L, tvref(L->stack),
 				(MSize)(oldsize*sizeof(TValue)),
 				(MSize)(realsize*sizeof(TValue)), "stack");
@@ -164,8 +165,9 @@ static void close_state(lua_State *L)
   global_State *g = G(L);
   lj_func_closeuv(L, tvref(L->stack));
   lj_gc_freeall(g);
-  lua_assert(gcref(g->gc.root) == obj2gco(L));
-  lua_assert(g->strnum == 0);
+  lj_assertG(gcref(g->gc.root) == obj2gco(L),
+	     "main thread is not first GC object");
+  lj_assertG(g->strnum == 0, "leaked %d strings", g->strnum);
   lj_trace_freestate(g);
 #if LJ_HASFFI
   lj_ctype_freestate(g);
@@ -173,7 +175,15 @@ static void close_state(lua_State *L)
   lj_mem_freevec(g, g->strhash, g->strmask+1, GCRef, "strtab");
   lj_buf_free(g, &g->tmpbuf, "tmpbuf");
   lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue, "stack");
-  lua_assert(g->gc.total == sizeof(GG_State));
+#if LJ_64
+  if (mref(g->gc.lightudseg, uint32_t)) {
+    MSize segnum = g->gc.lightudnum ? (2 << lj_fls(g->gc.lightudnum)) : 2;
+    lj_mem_freevec(g, mref(g->gc.lightudseg, uint32_t), segnum, uint32_t, "lightudseg");
+  }
+#endif
+  lj_assertG(g->gc.total == sizeof(GG_State),
+	     "memory leak of %lld bytes",
+	     (long long)(g->gc.total - sizeof(GG_State)));
 #ifndef LUAJIT_USE_SYSMALLOC
   if (g->allocf == lj_alloc_f)
     lj_alloc_destroy(g->allocd);
@@ -184,7 +194,7 @@ static void close_state(lua_State *L)
 
 }
 
-#if LJ_64 && !(defined(LUAJIT_USE_VALGRIND) && defined(LUAJIT_USE_SYSMALLOC))
+#if LJ_64 && !LJ_GC64 && !(defined(LUAJIT_USE_VALGRIND) && defined(LUAJIT_USE_SYSMALLOC))
 lua_State *lj_state_newstate(lua_Alloc f, void *ud)
 #else
 LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud)
@@ -231,7 +241,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud)
     close_state(L);
     return NULL;
   }
-  L->status = 0;
+  L->status = LUA_OK;
   return L;
 }
 
@@ -263,10 +273,10 @@ LUA_API void lua_close(lua_State *L)
 #endif
   for (i = 0;;) {
     hook_enter(g);
-    L->status = 0;
+    L->status = LUA_OK;
     L->base = L->top = tvref(L->stack) + 1 + LJ_FR2;
     L->cframe = NULL;
-    if (lj_vm_cpcall(L, NULL, NULL, cpfinalize) == 0) {
+    if (lj_vm_cpcall(L, NULL, NULL, cpfinalize) == LUA_OK) {
       if (++i >= 10) break;
       lj_gc_separateudata(g, 1);  /* Separate udata again. */
       if (gcref(g->gc.mmudata) == NULL)  /* Until nothing is left to do. */
@@ -282,7 +292,7 @@ lua_State *lj_state_new(lua_State *L)
   L1->dummy_ffid = FF_C;
   L1->gct = ~LJ_TTHREAD;
   L1->debug_flags = 0;
-  L1->status = 0;
+  L1->status = LUA_OK;
   L1->stacksize = 0;
   setmref(L1->stack, NULL);
   L1->cframe = NULL;
@@ -291,17 +301,17 @@ lua_State *lj_state_new(lua_State *L)
   setmrefr(L1->glref, L->glref);
   setgcrefr(L1->env, L->env);
   stack_init(L1, L);  /* init stack */
-  lua_assert(iswhite(obj2gco(L1)));
+  lj_assertL(iswhite(obj2gco(L1)), "new thread object is not white");
   return L1;
 }
 
 void LJ_FASTCALL lj_state_free(global_State *g, lua_State *L)
 {
-  lua_assert(L != mainthread(g));
+  lj_assertG(L != mainthread(g), "free of main thread");
   if (obj2gco(L) == gcref(g->cur_L))
     setgcrefnull(g->cur_L);
   lj_func_closeuv(L, tvref(L->stack));
-  lua_assert(gcref(L->openupval) == NULL);
+  lj_assertG(gcref(L->openupval) == NULL, "stale open upvalues");
   lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue, "stack");
   lj_mem_freet(g, L, "state");
 }
