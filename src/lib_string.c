@@ -113,9 +113,9 @@ LJLIB_ASM_(string_upper)  LJLIB_REC(string_op IRCALL_lj_buf_putstr_upper)
 
 /* ------------------------------------------------------------------------ */
 
-static int writer_buf(lua_State *L, const void *p, size_t size, void *sb, const char *reason)
+static int writer_buf(lua_State *L, const void *p, size_t size, void *sb)
 {
-  lj_buf_putmem((SBuf *)sb, p, (MSize)size, reason);
+  lj_buf_putmem((SBuf *)sb, p, (MSize)size, "string_dump");
   UNUSED(L);
   return 0;
 }

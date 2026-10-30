@@ -459,6 +459,7 @@ LJLIB_CF(collectgarbage)
   else if(opt == LUA_GCFINDF) {
     const char *addr = strdata(lj_lib_checkstr(L, 2));
     lj_gc_findf(L, (void*)strtoll(addr, NULL, 16));
+    return 0;
   }
    else {
     int32_t data = lj_lib_optint(L, 2, 0);

@@ -927,46 +927,38 @@ typedef struct PtrArray {
   b = tmp; \
 }
 
-static MSize partition(void **base, MSize s, MSize e, PtrCompare compare) {
-  MSize pivot = s;
-  s ++;
-  e --;
-
-  void *tmp;
-
-  #define LESS_EQUAL(a, b)  (compare?compare((a), (b))<=0: (a)<=(b))
-
-  while(s < e) {
-    while(s <= e && LESS_EQUAL(base[s], base[pivot])) {
-      s ++;
-    }     
-
-    while(s <= e && LESS_EQUAL(base[pivot], base[e])) {
-      e --;
-    }
-    if(s < e) {
-      SWAP(base[s], base[e], tmp);
-    }
-  }
-
-  if (e > pivot && LESS_EQUAL(base[e], base[pivot])) {
-    SWAP(base[pivot], base[e], tmp);
-  }
-
-  return e;
+static int PtrArray_compare(void *a, void *b, PtrCompare compare) {
+  if (compare) return compare(a, b);
+  uintptr_t pa = (uintptr_t)a;
+  uintptr_t pb = (uintptr_t)b;
+  return pa < pb ? -1 : pa > pb ? 1 : 0;
 }
 
-
-static void quick_sort(void **base, MSize s, MSize e, PtrCompare compare) {
-  if(s < e && s < e-1) {
-    MSize pivot = partition(base, s, e, compare);
-    quick_sort(base, s, pivot, compare);
-    quick_sort(base, pivot+1, e, compare);
+static void PtrArray_sift(void **base, MSize root, MSize count, PtrCompare compare) {
+  while (root < count / 2) {
+    MSize child = root * 2 + 1;
+    if (child + 1 < count && PtrArray_compare(base[child], base[child+1], compare) < 0)
+      child++;
+    if (PtrArray_compare(base[root], base[child], compare) >= 0)
+      return;
+    void *tmp = base[root];
+    base[root] = base[child];
+    base[child] = tmp;
+    root = child;
   }
 }
 
 static void PtrArray_sort(PtrArray *self, PtrCompare compare) {
-  quick_sort(self->base, 0, self->nr, compare);
+  MSize count = self->nr;
+  for (MSize start = count / 2; start > 0; start--)
+    PtrArray_sift(self->base, start - 1, count, compare);
+  while (count > 1) {
+    count--;
+    void *tmp = self->base[0];
+    self->base[0] = self->base[count];
+    self->base[count] = tmp;
+    PtrArray_sift(self->base, 0, count, compare);
+  }
 }
 
 static void PtrArray_append(PtrArray *self, void *data) {
@@ -1157,17 +1149,31 @@ static void traverse_all(global_State *g, Visitor visitor, PtrArray *ignore_objs
   }
 }
 
+static FILE *gc_debug_output = NULL;
+
+LUA_API void luaL_gcdebugoutput(FILE *stream) {
+  gc_debug_output = stream;
+}
+
+static FILE *lj_gc_debug_stream(void) {
+  return gc_debug_output ? gc_debug_output : stdout;
+}
+
 static void test_visitor(GCobj *obj) {
-  printf("test_visitor: %p\n", obj);
+  fprintf(lj_gc_debug_stream(), "test_visitor: %p\n", obj);
 }
 
 static void *__find_target = NULL;
 
 static void findf_visitor(GCobj *obj) {
   if(obj == __find_target) {
+    if (obj->gch.gct != (uint8_t)~LJ_TFUNC || !isluafunc(gco2func(obj))) {
+      fprintf(lj_gc_debug_stream(), "findf: address is not a Lua function\n");
+      return;
+    }
     GCfunc *fn = gco2func(obj);
     GCproto* proto = funcproto(fn);
-    printf("find it %s %d\n", strdata(proto_chunkname(proto)), proto->firstline);
+    fprintf(lj_gc_debug_stream(), "find it %s %d\n", strdata(proto_chunkname(proto)), proto->firstline);
   }
 }
 
@@ -1219,7 +1225,9 @@ static void diff_ptr_group(global_State *g) {
 
 }
 
-static int gco_debug_counter_compare(GCobj *a, GCobj *b) {
+static int gco_debug_counter_compare(void *pa, void *pb) {
+  GCobj *a = (GCobj *)pa;
+  GCobj *b = (GCobj *)pb;
   int ca = a->gch.debug_counter;
   int cb = b->gch.debug_counter;
   if(ca < cb)
@@ -1232,29 +1240,29 @@ static int gco_debug_counter_compare(GCobj *a, GCobj *b) {
 void dump_gcobj(GCobj *obj) {
   int gct = obj->gch.gct;
   if (gct == ~LJ_TTAB) {
-    printf("TABLE");
+    fprintf(lj_gc_debug_stream(), "TABLE");
   } 
   else if( gct == ~LJ_TSTR) {
-    printf("STR(");
+    fprintf(lj_gc_debug_stream(), "STR(");
     GCstr *str = gco2str(obj);
-    fwrite(strdata(str), 1, str->len, stdout);
-    printf(")");
+    fwrite(strdata(str), 1, str->len, lj_gc_debug_stream());
+    fprintf(lj_gc_debug_stream(), ")");
   }
   else if(gct == ~LJ_TUPVAL) {
-    printf("UPVAL");
+    fprintf(lj_gc_debug_stream(), "UPVAL");
   }
   else if(gct == ~LJ_TTHREAD) {
-    printf("THREAD");
+    fprintf(lj_gc_debug_stream(), "THREAD");
 
   }
   else if(gct == ~LJ_TPROTO) {
-    printf("PROTO");
+    fprintf(lj_gc_debug_stream(), "PROTO");
   }
   else if(gct == ~LJ_TFUNC) {
-    printf("FUNC");
+    fprintf(lj_gc_debug_stream(), "FUNC");
   }
   else if(gct == ~LJ_TUDATA) {
-    printf("UDATA");
+    fprintf(lj_gc_debug_stream(), "UDATA");
   }
 }
 
@@ -1273,10 +1281,15 @@ static void __lj_gc_diff(lua_State *L) {
   int old_group = 1 - current_ptr_group;
   MSize old_nr = obj_ptr_array[old_group].nr;
 
-  if(old_nr == 0)
+  if(old_nr == 0) {
+    fprintf(lj_gc_debug_stream(), "[alloc2] baseline_objects=%u\n", obj_ptr_array[current_ptr_group].nr);
     return;
+  }
 
   diff_ptr_group(G(L));
+  fprintf(lj_gc_debug_stream(), "[alloc2] baseline_objects=%u current_objects=%u added_objects=%u\n",
+    old_nr, obj_ptr_array[current_ptr_group].nr, diff_objs.nr);
+  fflush(lj_gc_debug_stream());
 
 
   for(int i = 0; i < diff_objs.nr; i ++) {
@@ -1301,23 +1314,23 @@ static void __lj_gc_diff(lua_State *L) {
     for(int k = stack_tmp.nr -1; k >= 0; k -- ) {
         ptr = stack_tmp.base[k];
         if(ptr->gch.debug_path_desc) {
-          printf("(desc:%s) ", ptr->gch.debug_path_desc);
+          fprintf(lj_gc_debug_stream(), "(desc:%s) ", ptr->gch.debug_path_desc);
           if(ptr->gch.debug_path_param) {
-            printf("(param: ");
+            fprintf(lj_gc_debug_stream(), "(param: ");
             if(&non_gc == ptr->gch.debug_path_param) {
-              printf("non_gc");
+              fprintf(lj_gc_debug_stream(), "non_gc");
             }
             else {
               dump_gcobj(ptr->gch.debug_path_param);
             }
-            printf(")");
+            fprintf(lj_gc_debug_stream(), ")");
           }
         }
         dump_gcobj(ptr);
-        printf("(addr: %p)(counter: %d) ->", ptr, ptr->gch.debug_counter);
+        fprintf(lj_gc_debug_stream(), "(addr: %p)(counter: %d) ->", ptr, ptr->gch.debug_counter);
     }
 
-    printf("\n");
+    fprintf(lj_gc_debug_stream(), "\n");
   } 
 }
 

@@ -2,6 +2,12 @@
 # macOS: ./build_android.sh [all|arm64-v8a|armeabi-v7a] [--install /path/to/animal-core]
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")" && pwd)
+if [[ "${LUAJIT_REQUIRE_ALLOC2:-false}" == true ]]; then
+    if ! grep -q 'define LUA_GCDIFF' "$ROOT/src/lua.h" || ! grep -q 'luaL_gcdebugoutput' "$ROOT/src/lauxlib.h"; then
+        echo "Local Android Lua debugging requires debug/alloc2 with the gcdebugoutput adapter." >&2
+        exit 1
+    fi
+fi
 ABI=${1:-all}
 if [[ $# -gt 0 ]]; then shift; fi
 INSTALL_ROOT=

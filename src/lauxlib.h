@@ -16,6 +16,7 @@
 #include "lua.h"
 
 extern size_t luajit_mm;
+LUALIB_API void luaL_gcdebugoutput(FILE *stream);
 
 
 
