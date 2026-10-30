@@ -31,8 +31,43 @@
 #include "lj_def.h"
 #include "lj_arch.h"
 #include "lj_alloc.h"
+#include "luajit.h"
+
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
 
 size_t luajit_mm = 0;
+
+static void alloc_record_change(size_t oldsize, size_t newsize)
+{
+#if defined(_MSC_VER)
+#if LJ_64
+  _InterlockedExchangeAdd64((volatile __int64 *)&luajit_mm,
+                           (__int64)(newsize - oldsize));
+#else
+  _InterlockedExchangeAdd((volatile long *)&luajit_mm,
+                         (long)(newsize - oldsize));
+#endif
+#else
+  __atomic_fetch_add(&luajit_mm, newsize - oldsize, __ATOMIC_RELAXED);
+#endif
+}
+
+LUA_API size_t luaJIT_getreservedbytes(void)
+{
+#if defined(_MSC_VER)
+#if LJ_64
+  return (size_t)_InterlockedCompareExchange64(
+    (volatile __int64 *)&luajit_mm, 0, 0);
+#else
+  return (size_t)_InterlockedCompareExchange(
+    (volatile long *)&luajit_mm, 0, 0);
+#endif
+#else
+  return __atomic_load_n(&luajit_mm, __ATOMIC_RELAXED);
+#endif
+}
 
 #ifndef LUAJIT_USE_SYSMALLOC
 
@@ -144,11 +179,11 @@ static void init_mmap(void)
 /* Win64 32 bit MMAP via NtAllocateVirtualMemory. */
 static void *CALL_MMAP(size_t size)
 {
-  luajit_mm += size;
   DWORD olderr = GetLastError();
   void *ptr = NULL;
   long st = ntavm(INVALID_HANDLE_VALUE, &ptr, NTAVM_ZEROBITS, &size,
 		  MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+  if (st == 0) alloc_record_change(0, size);
   SetLastError(olderr);
   return st == 0 ? ptr : MFAIL;
 }
@@ -160,6 +195,7 @@ static void *direct_mmap(size_t size)
   void *ptr = NULL;
   long st = ntavm(INVALID_HANDLE_VALUE, &ptr, NTAVM_ZEROBITS, &size,
 		  MEM_RESERVE|MEM_COMMIT|MEM_TOP_DOWN, PAGE_READWRITE);
+  if (st == 0) alloc_record_change(0, size);
   SetLastError(olderr);
   return st == 0 ? ptr : MFAIL;
 }
@@ -169,10 +205,9 @@ static void *direct_mmap(size_t size)
 /* Win32 MMAP via VirtualAlloc */
 static void *CALL_MMAP(size_t size)
 {
-  luajit_mm += size;
-
   DWORD olderr = GetLastError();
   void *ptr = LJ_WIN_VALLOC(0, size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+  if (ptr) alloc_record_change(0, size);
   SetLastError(olderr);
   return ptr ? ptr : MFAIL;
 }
@@ -183,6 +218,7 @@ static void *direct_mmap(size_t size)
   DWORD olderr = GetLastError();
   void *ptr = LJ_WIN_VALLOC(0, size, MEM_RESERVE|MEM_COMMIT|MEM_TOP_DOWN,
 			    PAGE_READWRITE);
+  if (ptr) alloc_record_change(0, size);
   SetLastError(olderr);
   return ptr ? ptr : MFAIL;
 }
@@ -194,7 +230,6 @@ static void *direct_mmap(size_t size)
 /* This function supports releasing coalesed segments */
 static int CALL_MUNMAP(void *ptr, size_t size)
 {
-  luajit_mm -= size;
   DWORD olderr = GetLastError();
   MEMORY_BASIC_INFORMATION minfo;
   char *cptr = (char *)ptr;
@@ -206,6 +241,7 @@ static int CALL_MUNMAP(void *ptr, size_t size)
       return -1;
     if (VirtualFree(cptr, 0, MEM_RELEASE) == 0)
       return -1;
+    alloc_record_change(minfo.RegionSize, 0);
     cptr += minfo.RegionSize;
     size -= minfo.RegionSize;
   }
@@ -267,7 +303,7 @@ static void *mmap_probe(size_t size)
 	((addr + size) >> LJ_ALLOC_MBITS) == 0) {
       /* We got a suitable address. Bump the hint address. */
       hint_addr = addr + size;
-      luajit_mm += size;
+      alloc_record_change(0, size);
       errno = olderr;
       return p;
     }
@@ -333,7 +369,7 @@ static void *mmap_map32(size_t size)
       return mmap_probe(size);
     }
 #endif
-    if (ptr != MFAIL) luajit_mm += size;
+    if (ptr != MFAIL) alloc_record_change(0, size);
     return ptr;
   }
 }
@@ -347,10 +383,9 @@ static void *mmap_map32(size_t size)
 #else
 static void *CALL_MMAP(size_t size)
 {
-  luajit_mm += size;
-
   int olderr = errno;
   void *ptr = mmap(NULL, size, MMAP_PROT, MMAP_FLAGS, -1, 0);
+  if (ptr != MFAIL) alloc_record_change(0, size);
   errno = olderr;
   return ptr;
 }
@@ -373,9 +408,8 @@ static void init_mmap(void)
 static int CALL_MUNMAP(void *ptr, size_t size)
 {
   int olderr = errno;
-  // printf("munmap %lu\n", size);
-  luajit_mm -= size;
   int ret = munmap(ptr, size);
+  if (ret == 0) alloc_record_change(size, 0);
   errno = olderr;
   return ret;
 }
@@ -384,9 +418,9 @@ static int CALL_MUNMAP(void *ptr, size_t size)
 /* Need to define _GNU_SOURCE to get the mremap prototype. */
 static void *CALL_MREMAP_(void *ptr, size_t osz, size_t nsz, int flags)
 {
-  luajit_mm += nsz - osz;
   int olderr = errno;
   ptr = mremap(ptr, osz, nsz, flags);
+  if (ptr != MFAIL) alloc_record_change(osz, nsz);
   errno = olderr;
   return ptr;
 }

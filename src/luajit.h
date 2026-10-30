@@ -61,6 +61,9 @@ enum {
 
 /* LuaJIT public C API. */
 
+/* Process-wide bytes mapped by the bundled allocator, including free space. */
+LUA_API size_t luaJIT_getreservedbytes(void);
+
 /* Control the JIT engine. */
 LUA_API int luaJIT_setmode(lua_State *L, int idx, int mode);
 
