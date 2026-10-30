@@ -1023,7 +1023,64 @@ static PtrArray obj_ptr_array[2] = {
 
 static PtrArray diff_objs = {NULL, 0, 0};
 
+/* Parallel to the sorted address snapshots. No extra GC header fields or
+** allocation/free hooks: only diff() reads and stores these 32-bit sizes.
+** Keep libc-owned bookkeeping outside the Lua heap and its reference graph. */
+typedef struct Alloc2Sizes {
+  uint32_t *base;
+  MSize alloc;
+  uint64_t reachable_bytes;
+  uint64_t lua_bytes;
+  uint64_t string_hash_bytes;
+  uint64_t temp_buffer_bytes;
+} Alloc2Sizes;
+
+static Alloc2Sizes obj_sizes[2];
 static int current_ptr_group = 0;
+
+/* Requested allocation bytes, matching the corresponding free routines.
+** Include table array/hash capacities, even when their entries are empty.
+** Native allocations referenced by userdata and allocator overhead are excluded. */
+static uint64_t alloc2_object_bytes(global_State *g, GCobj *o)
+{
+  int gct = o->gch.gct;
+  if (gct == ~LJ_TSTR) return sizestring(gco2str(o));
+  if (gct == ~LJ_TTAB) {
+    GCtab *t = gco2tab(o);
+    uint64_t n = sizeof(GCtab);
+    if (t->hmask > 0) n += (uint64_t)(t->hmask+1)*sizeof(Node);
+    if (LJ_MAX_COLOSIZE != 0 && t->colo)
+      n += ((uint32_t)t->colo & 0x7f)*sizeof(TValue);
+    if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
+      n += (uint64_t)t->asize*sizeof(TValue);
+    return n;
+  }
+  if (gct == ~LJ_TFUNC) {
+    GCfunc *fn = gco2func(o);
+    return isluafunc(fn) ? sizeLfunc(fn->l.nupvalues) : sizeCfunc(fn->c.nupvalues);
+  }
+  if (gct == ~LJ_TPROTO) return gco2pt(o)->sizept;
+  if (gct == ~LJ_TUPVAL) return sizeof(GCupval);
+  if (gct == ~LJ_TTHREAD)
+    return sizeof(lua_State) + (uint64_t)gco2th(o)->stacksize*sizeof(TValue);
+  if (gct == ~LJ_TUDATA) return sizeudata(gco2ud(o));
+#if LJ_HASFFI
+  if (gct == ~LJ_TCDATA) {
+    GCcdata *cd = gco2cd(o);
+    if (cdataisv(cd)) return sizecdatav(cd);
+    CType *ct = ctype_raw(ctype_ctsG(g), cd->ctypeid);
+    return sizeof(GCcdata) + (uint64_t)(ctype_hassize(ct->info) ? ct->size : CTSIZE_PTR);
+  }
+#endif
+#if LJ_HASJIT
+  if (gct == ~LJ_TTRACE) {
+    GCtrace *T = gco2trace(o);
+    return ((sizeof(GCtrace)+7)&~7) + (uint64_t)(T->nins-T->nk)*sizeof(IRIns) +
+      (uint64_t)T->nsnap*sizeof(SnapShot) + (uint64_t)T->nsnapmap*sizeof(SnapEntry);
+  }
+#endif
+  return 0;
+}
 
 static GCobj non_gc;
 
@@ -1203,46 +1260,71 @@ static void save_ptr(GCobj *obj) {
   obj->gch.debug_counter = 0;
 }
 
-static void diff_ptr_group(global_State *g) {
+/* This sequential pass runs once per capture, after the existing address sort.
+** Old addresses may be freed: only read their saved sizes, never dereference them. */
+static int alloc2_capture_sizes(global_State *g)
+{
+  PtrArray *objects = &obj_ptr_array[current_ptr_group];
+  Alloc2Sizes *sizes = &obj_sizes[current_ptr_group];
+  if (sizes->alloc < objects->nr) {
+    uint32_t *p = (uint32_t *)realloc(sizes->base, sizeof(uint32_t)*(size_t)objects->nr);
+    if (!p) return 0;
+    sizes->base = p;
+    sizes->alloc = objects->nr;
+  }
+  sizes->reachable_bytes = 0;
+  sizes->lua_bytes = g->gc.total;
+  sizes->string_hash_bytes = ((uint64_t)g->strmask+1)*sizeof(GCRef);
+  sizes->temp_buffer_bytes = sbufsz(&g->tmpbuf);
+  for (MSize i = 0; i < objects->nr; i++) {
+    uint64_t n = alloc2_object_bytes(g, (GCobj *)objects->base[i]);
+    /* Reject unsupported/oversized objects rather than silently truncate totals. */
+    if (!n || n > UINT32_MAX) return 0;
+    sizes->base[i] = (uint32_t)n;
+    sizes->reachable_bytes += n;
+  }
+  return 1;
+}
+
+typedef struct Alloc2Delta {
+  uint64_t added_bytes, removed_bytes;
+  int64_t resized_bytes;
+  MSize removed_objects, resized_objects;
+} Alloc2Delta;
+
+static Alloc2Delta diff_ptr_group(List *resized)
+{
   int old_group = 1 - current_ptr_group;
-  int new_group = current_ptr_group;
-
-  void **old = obj_ptr_array[old_group].base;
-  void **new = obj_ptr_array[new_group].base;
-
-  MSize old_nr = obj_ptr_array[old_group].nr;
-  MSize new_nr = obj_ptr_array[new_group].nr;
-
+  PtrArray *old = &obj_ptr_array[old_group];
+  PtrArray *cur = &obj_ptr_array[current_ptr_group];
+  Alloc2Sizes *before = &obj_sizes[old_group];
+  Alloc2Sizes *after = &obj_sizes[current_ptr_group];
+  Alloc2Delta delta = {0, 0, 0, 0, 0};
+  MSize oi = 0, ni = 0;
   PtrArray_clear(&diff_objs);
-
-  MSize old_index = 0;
-  MSize new_index = 0;
-
-  while(old_index < old_nr && new_index < new_nr) {
-
-    void *new_data = new[new_index];
-    void *old_data = old[old_index];
-
-    if(new_data == old_data) {
-      new_index ++;
-      old_index ++;
+  while (oi < old->nr || ni < cur->nr) {
+    if (oi < old->nr && ni < cur->nr && old->base[oi] == cur->base[ni]) {
+      int64_t change = (int64_t)after->base[ni] - before->base[oi];
+      if (change) {
+        GCobj *obj = (GCobj *)cur->base[ni];
+        /* The BFS queue is drained and counters are still zero. Reuse its
+        ** existing links and counter until resize paths have been printed. */
+        List_append(resized, &obj->gch.debug_list);
+        obj->gch.debug_counter = (int32_t)before->base[oi];
+        delta.resized_objects++;
+        delta.resized_bytes += change;
+      }
+      oi++; ni++;
+    } else if (ni < cur->nr && (oi == old->nr ||
+               (uintptr_t)cur->base[ni] < (uintptr_t)old->base[oi])) {
+      PtrArray_append(&diff_objs, cur->base[ni]);
+      delta.added_bytes += after->base[ni++];
+    } else {
+      delta.removed_bytes += before->base[oi++];
+      delta.removed_objects++;
     }
-    else if(new_data < old_data) {
-      PtrArray_append(&diff_objs, new_data);
-      new_index ++;
-    }
-    else {
-      old_index ++;
-    }
-
   }
-
-  while(new_index < new_nr) {
-    PtrArray_append(&diff_objs, new[new_index]);
-    new_index ++;
-  }
-
-
+  return delta;
 }
 
 static int gco_debug_counter_compare(void *pa, void *pb) {
@@ -1284,74 +1366,132 @@ void dump_gcobj(GCobj *obj) {
   else if(gct == ~LJ_TUDATA) {
     fprintf(lj_gc_debug_stream(), "UDATA");
   }
+  else if(gct == ~LJ_TCDATA) {
+    fprintf(lj_gc_debug_stream(), "CDATA");
+  }
+  else if(gct == ~LJ_TTRACE) {
+    fprintf(lj_gc_debug_stream(), "TRACE");
+  }
 }
 
 static PtrArray stack_tmp = {NULL, 0, 0};
 
-static void __lj_gc_diff(lua_State *L) {
-
-  for(int i = 0; i < 16; i ++){
-    lj_gc_fullgc(L);
+/* Reuse the existing intrusive BFS parent links. Byte sizes are self sizes,
+** not retained subtree sizes: shared objects must not be charged repeatedly. */
+static void alloc2_dump_path(global_State *g, GCobj *leaf, int show_counter)
+{
+  PtrArray_clear(&stack_tmp);
+  for (GCobj *ptr = leaf; ptr; ptr = ptr->gch.debug_path)
+    PtrArray_append(&stack_tmp, ptr);
+  for (MSize k = stack_tmp.nr; k > 0; k--) {
+    GCobj *ptr = (GCobj *)stack_tmp.base[k-1];
+    if (ptr->gch.debug_path_desc) {
+      fprintf(lj_gc_debug_stream(), "(desc:%s) ", ptr->gch.debug_path_desc);
+      if (ptr->gch.debug_path_param) {
+        fprintf(lj_gc_debug_stream(), "(param: ");
+        if (&non_gc == ptr->gch.debug_path_param)
+          fprintf(lj_gc_debug_stream(), "non_gc");
+        else
+          dump_gcobj(ptr->gch.debug_path_param);
+        fprintf(lj_gc_debug_stream(), ")");
+      }
+    }
+    dump_gcobj(ptr);
+    fprintf(lj_gc_debug_stream(), "(addr: %p)", (void *)ptr);
+    if (show_counter)
+      fprintf(lj_gc_debug_stream(), "(counter: %d)", ptr->gch.debug_counter);
+    if (ptr == leaf)
+      fprintf(lj_gc_debug_stream(), "(self_bytes: %llu)", (unsigned long long)alloc2_object_bytes(g, ptr));
+    fprintf(lj_gc_debug_stream(), " ->");
   }
+  fprintf(lj_gc_debug_stream(), "\n");
+}
+
+static void alloc2_print_totals(int old_group, int has_baseline)
+{
+  Alloc2Sizes *cur = &obj_sizes[current_ptr_group];
+  Alloc2Sizes *old = &obj_sizes[old_group];
+  int64_t other = (int64_t)cur->lua_bytes - (int64_t)cur->reachable_bytes;
+  fprintf(lj_gc_debug_stream(),
+    "[alloc2] lua_bytes=%llu reachable_bytes=%llu other_bytes=%lld "
+    "string_hash_bytes=%llu temp_buffer_bytes=%llu size_metadata_bytes=%llu\n",
+    (unsigned long long)cur->lua_bytes, (unsigned long long)cur->reachable_bytes,
+    (long long)other, (unsigned long long)cur->string_hash_bytes,
+    (unsigned long long)cur->temp_buffer_bytes,
+    (unsigned long long)(sizeof(uint32_t)*((uint64_t)obj_sizes[0].alloc + obj_sizes[1].alloc)));
+  if (has_baseline) {
+    int64_t ld = (int64_t)cur->lua_bytes - (int64_t)old->lua_bytes;
+    int64_t rd = (int64_t)cur->reachable_bytes - (int64_t)old->reachable_bytes;
+    fprintf(lj_gc_debug_stream(),
+      "[alloc2] lua_delta_bytes=%lld reachable_delta_bytes=%lld other_delta_bytes=%lld "
+      "string_hash_delta_bytes=%lld temp_buffer_delta_bytes=%lld\n",
+      (long long)ld, (long long)rd, (long long)(ld-rd),
+      (long long)((int64_t)cur->string_hash_bytes - (int64_t)old->string_hash_bytes),
+      (long long)((int64_t)cur->temp_buffer_bytes - (int64_t)old->temp_buffer_bytes));
+  }
+}
+
+static void __lj_gc_diff(lua_State *L) {
+  global_State *g = G(L);
+  for (int i = 0; i < 16; i++) lj_gc_fullgc(L);
   current_ptr_group = 1 - current_ptr_group;
   PtrArray_clear(&obj_ptr_array[current_ptr_group]);
-  traverse_all(G(L), &save_ptr, &ignore_objs, &ignore_keys);
+  traverse_all(g, &save_ptr, &ignore_objs, &ignore_keys);
   PtrArray_sort(&obj_ptr_array[current_ptr_group], NULL);
-
-  int old_group = 1 - current_ptr_group;
-  MSize old_nr = obj_ptr_array[old_group].nr;
-
-  if(old_nr == 0) {
-    fprintf(lj_gc_debug_stream(), "[alloc2] baseline_objects=%u\n", obj_ptr_array[current_ptr_group].nr);
+  if (!alloc2_capture_sizes(g)) {
+    fprintf(lj_gc_debug_stream(), "[alloc2] size capture failed (memory/unsupported size); baseline unchanged\n");
+    PtrArray_clear(&obj_ptr_array[current_ptr_group]);
+    current_ptr_group = 1 - current_ptr_group;
     return;
   }
 
-  diff_ptr_group(G(L));
-  fprintf(lj_gc_debug_stream(), "[alloc2] baseline_objects=%u current_objects=%u added_objects=%u\n",
-    old_nr, obj_ptr_array[current_ptr_group].nr, diff_objs.nr);
-  fflush(lj_gc_debug_stream());
-
-
-  for(int i = 0; i < diff_objs.nr; i ++) {
-      GCobj *ptr = (GCobj *) diff_objs.base[i];
-      while(ptr) {
-        ptr->gch.debug_counter ++;
-        ptr = ptr->gch.debug_path;
-      }
+  int old_group = 1 - current_ptr_group;
+  MSize old_nr = obj_ptr_array[old_group].nr;
+  if (old_nr == 0) {
+    fprintf(lj_gc_debug_stream(), "[alloc2] baseline_objects=%u\n", obj_ptr_array[current_ptr_group].nr);
+    alloc2_print_totals(old_group, 0);
+    return;
   }
 
-  PtrArray_sort(&diff_objs, gco_debug_counter_compare);
-  int show = 0x7FFFFFFF;
+  List resized = List_init(&resized);
+  Alloc2Delta delta = diff_ptr_group(&resized);
+  fprintf(lj_gc_debug_stream(),
+    "[alloc2] baseline_objects=%u current_objects=%u added_objects=%u removed_objects=%u resized_objects=%u\n",
+    old_nr, obj_ptr_array[current_ptr_group].nr, diff_objs.nr, delta.removed_objects, delta.resized_objects);
+  fprintf(lj_gc_debug_stream(),
+    "[alloc2] added_bytes=%llu removed_bytes=%llu resized_delta_bytes=%lld\n",
+    (unsigned long long)delta.added_bytes, (unsigned long long)delta.removed_bytes,
+    (long long)delta.resized_bytes);
+  alloc2_print_totals(old_group, 1);
+  fflush(lj_gc_debug_stream());
 
-  for(int i = 0; i < show && i < diff_objs.nr; i ++) {
-    PtrArray_clear(&stack_tmp);
-    GCobj *ptr = (GCobj *) diff_objs.base[i];
-    while(ptr) {
-      PtrArray_append(&stack_tmp, ptr);
+  /* Drain the temporary intrusive queue before counting added descendants.
+  ** No saved address is dereferenced: only live objects enter this list. */
+  while (!List_empty(&resized)) {
+    List *elem = List_first(&resized);
+    List_remove(elem);
+    GCobj *obj = obj2gco(List_entry(elem, GChead, debug_list));
+    uint32_t before = (uint32_t)obj->gch.debug_counter;
+    uint64_t after = alloc2_object_bytes(g, obj);
+    obj->gch.debug_counter = 0;
+    fprintf(lj_gc_debug_stream(),
+      "[alloc2-resize] old_bytes=%u new_bytes=%llu delta_bytes=%lld ",
+      before, (unsigned long long)after, (long long)((int64_t)after-before));
+    alloc2_dump_path(g, obj, 0);
+  }
+
+  for (MSize i = 0; i < diff_objs.nr; i++) {
+    GCobj *ptr = (GCobj *)diff_objs.base[i];
+    while (ptr) {
+      ptr->gch.debug_counter++;
       ptr = ptr->gch.debug_path;
     }
+  }
+  PtrArray_sort(&diff_objs, gco_debug_counter_compare);
+  for (MSize i = 0; i < diff_objs.nr; i++)
+    alloc2_dump_path(g, (GCobj *)diff_objs.base[i], 1);
 
-    for(int k = stack_tmp.nr -1; k >= 0; k -- ) {
-        ptr = stack_tmp.base[k];
-        if(ptr->gch.debug_path_desc) {
-          fprintf(lj_gc_debug_stream(), "(desc:%s) ", ptr->gch.debug_path_desc);
-          if(ptr->gch.debug_path_param) {
-            fprintf(lj_gc_debug_stream(), "(param: ");
-            if(&non_gc == ptr->gch.debug_path_param) {
-              fprintf(lj_gc_debug_stream(), "non_gc");
-            }
-            else {
-              dump_gcobj(ptr->gch.debug_path_param);
-            }
-            fprintf(lj_gc_debug_stream(), ")");
-          }
-        }
-        dump_gcobj(ptr);
-        fprintf(lj_gc_debug_stream(), "(addr: %p)(counter: %d) ->", ptr, ptr->gch.debug_counter);
-    }
 
-    fprintf(lj_gc_debug_stream(), "\n");
-  } 
 }
 
 void lj_gc_ignore_obj(lua_State *L, void *obj) {
